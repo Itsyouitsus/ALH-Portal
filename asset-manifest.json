@@ -1,13 +1,13 @@
 {
   "files": {
     "main.css": "/ALH-Portal/static/css/main.1894af20.css",
-    "main.js": "/ALH-Portal/static/js/main.56b764fb.js",
+    "main.js": "/ALH-Portal/static/js/main.9bfefa7e.js",
     "index.html": "/ALH-Portal/index.html",
     "main.1894af20.css.map": "/ALH-Portal/static/css/main.1894af20.css.map",
-    "main.56b764fb.js.map": "/ALH-Portal/static/js/main.56b764fb.js.map"
+    "main.9bfefa7e.js.map": "/ALH-Portal/static/js/main.9bfefa7e.js.map"
   },
   "entrypoints": [
     "static/css/main.1894af20.css",
-    "static/js/main.56b764fb.js"
+    "static/js/main.9bfefa7e.js"
   ]
 }
