@@ -2,13 +2,19 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { db } from '../firebase';
 import { collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, serverTimestamp, orderBy, query } from 'firebase/firestore';
-import { sendSignInLinkToEmail } from 'firebase/auth';
-import { auth } from '../firebase';
 
-const ACTION_CODE = {
-  url: 'https://itsyouitsus.github.io/ALH-Portal/#/login',
-  handleCodeInApp: true,
-};
+const WORKER_URL = 'https://alh-email-worker.home-f67.workers.dev/';
+
+async function sendInvite(email) {
+  const res = await fetch(WORKER_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, isInvite: true }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to send invite');
+  return data;
+}
 
 function NewClientModal({ onClose, onCreated }) {
   const [name, setName] = useState('');
@@ -30,7 +36,7 @@ function NewClientModal({ onClose, onCreated }) {
           role: 'client', createdAt: serverTimestamp(),
           searchStarted: new Date().toISOString().split('T')[0],
         });
-        await sendSignInLinkToEmail(auth, em, ACTION_CODE);
+        await sendInvite(em);
       }
       onCreated();
       onClose();
@@ -162,7 +168,7 @@ export default function Admin() {
 
   const resendInvite = async (p) => {
     try {
-      await sendSignInLinkToEmail(auth, p.email, ACTION_CODE);
+      await sendInvite(p.email);
       alert(`Invite resent to ${p.email}`);
     } catch (err) { alert('Error: '+err.message); }
   };
