@@ -8,7 +8,7 @@ import {
 import { sendSignInLinkToEmail } from 'firebase/auth';
 import { auth } from '../firebase';
 
-const ACTION_CODE = { url: window.location.origin + '/login', handleCodeInApp: true };
+const ACTION_CODE = { url: 'https://itsyouitsus.github.io/ALH-Portal/#/login', handleCodeInApp: true };
 
 function NewClientModal({ onClose, onCreated }) {
   const [name, setName] = useState('');
