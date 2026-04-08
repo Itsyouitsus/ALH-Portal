@@ -8,10 +8,8 @@ import {
 import { auth } from '../firebase';
 import { useAuth } from '../hooks/useAuth';
 
-const REDIRECT_URL = 'https://itsyouitsus.github.io/ALH-Portal/';
-
 const actionCodeSettings = {
-  url: REDIRECT_URL,
+  url: window.location.origin + '/ALH-Portal/#/login',
   handleCodeInApp: true,
 };
 
@@ -25,7 +23,6 @@ export default function Login() {
 
   useEffect(() => {
     if (user) { navigate('/'); return; }
-
     if (isSignInWithEmailLink(auth, window.location.href)) {
       let storedEmail = window.localStorage.getItem('alhLoginEmail');
       if (!storedEmail) {
@@ -38,7 +35,7 @@ export default function Login() {
             window.localStorage.removeItem('alhLoginEmail');
             navigate('/');
           })
-          .catch(() => {
+          .catch(err => {
             setError('Link expired or invalid. Please request a new one.');
             setLoading(false);
           });
