@@ -3,9 +3,52 @@ import { useAuth } from '../hooks/useAuth';
 import { db } from '../firebase';
 import { collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, serverTimestamp, orderBy, query } from 'firebase/firestore';
 import { auth } from '../firebase';
-import { getMagicLink, sendBrandedEmail } from './Login';
 
-const ACTION_CODE = { url: 'https://itsyouitsus.github.io/ALH-Portal/#/login', handleCodeInApp: true };
+const WORKER_URL = 'https://alh-email-worker.home-f67.workers.dev/';
+const FIREBASE_API_KEY = 'AIzaSyAhIlt30p-huvswMLh3OOvsNrHwWR8LeEI';
+const PORTAL_URL = 'https://itsyouitsus.github.io/ALH-Portal/#/login';
+
+async function getMagicLink(email) {
+  const res = await fetch(
+    `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${FIREBASE_API_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requestType: 'EMAIL_SIGNIN', email, continueUrl: PORTAL_URL, returnOobLink: true }),
+    }
+  );
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  return data.oobLink;
+}
+
+async function sendInviteEmail(email, magicLink) {
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#f7f5f0;font-family:'Helvetica Neue',Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f7f5f0;padding:40px 20px;">
+<tr><td align="center">
+<table width="520" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;">
+<tr><td style="background:#0f0f0d;padding:32px 40px;text-align:center;">
+<div style="font-family:Georgia,serif;font-size:22px;color:#c9a96e;letter-spacing:0.04em;">Amsterdam Life Homes</div>
+<div style="font-size:12px;color:rgba(247,245,240,0.5);margin-top:4px;letter-spacing:0.08em;text-transform:uppercase;">Your personal housing portal</div>
+</td></tr>
+<tr><td style="padding:40px 40px 32px;">
+<p style="font-size:15px;color:#555;line-height:1.6;margin:0 0 24px;">We have set up your personal housing portal. Click the button below to activate it and see the properties we have lined up for you.</p>
+<div style="text-align:center;margin:32px 0;">
+<a href="${magicLink}" style="display:inline-block;background:#0f0f0d;color:#c9a96e;text-decoration:none;font-size:14px;font-weight:600;letter-spacing:0.06em;padding:16px 36px;border-radius:6px;">Open my portal</a>
+</div>
+<p style="font-size:13px;color:#999;line-height:1.6;margin:0;">This link expires in 24 hours and can only be used once.<br>If you did not expect this email, you can safely ignore it.</p>
+</td></tr>
+<tr><td style="background:#f7f5f0;padding:24px 40px;border-top:1px solid #e8e4dc;text-align:center;">
+<p style="font-size:12px;color:#aaa;margin:0;">Amsterdam Life Homes &nbsp;·&nbsp; <a href="mailto:home@amsterdamlifehomes.com" style="color:#aaa;">home@amsterdamlifehomes.com</a></p>
+</td></tr>
+</table></td></tr></table></body></html>`;
+  await fetch(WORKER_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ to: email, subject: 'Your Amsterdam Life Homes portal is ready', html }),
+  });
+}
 
 function NewClientModal({ onClose, onCreated }) {
   const [name, setName] = useState('');
@@ -19,27 +62,13 @@ function NewClientModal({ onClose, onCreated }) {
     setSaving(true);
     setError('');
     try {
-      // Generate magic links for each email
       const emails = [email, email2].filter(Boolean);
-
-      // Create pendingClient record (one per email)
       for (const em of emails) {
         const clientRef = doc(collection(db, 'pendingClients'));
-        await setDoc(clientRef, {
-          name,
-          email: em,
-          primaryEmail: email,
-          allEmails: emails,
-          role: 'client',
-          createdAt: serverTimestamp(),
-          searchStarted: new Date().toISOString().split('T')[0],
-        });
-
-        // Generate magic link via Firebase
-        const link = await generateSignInWithEmailLink(auth, em, ACTION_CODE);
-        await sendBrandedEmail(em, link, true);
+        await setDoc(clientRef, { name, email: em, primaryEmail: email, allEmails: emails, role: 'client', createdAt: serverTimestamp(), searchStarted: new Date().toISOString().split('T')[0] });
+        const link = await getMagicLink(em);
+        await sendInviteEmail(em, link);
       }
-
       onCreated();
       onClose();
     } catch (err) {
@@ -55,18 +84,14 @@ function NewClientModal({ onClose, onCreated }) {
         <div className="field"><label>Full name</label><input value={name} onChange={e => setName(e.target.value)} placeholder="Sarah & James Collins"/></div>
         <div className="field"><label>Email address</label><input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="client@example.com"/></div>
         <div className="field">
-          <label>Second email address <span style={{ fontWeight:400,color:'var(--text-muted)' }}>(optional)</span></label>
+          <label>Second email <span style={{ fontWeight:400,color:'var(--text-muted)' }}>(optional)</span></label>
           <input type="email" value={email2} onChange={e => setEmail2(e.target.value)} placeholder="partner@example.com"/>
         </div>
-        <div style={{ fontSize:12,color:'var(--text-muted)',marginBottom:error ? 8 : 20 }}>
-          Both addresses will receive a portal invite and can sign in independently.
-        </div>
+        <div style={{ fontSize:12,color:'var(--text-muted)',marginBottom:error ? 8 : 20 }}>Both addresses will receive a portal invite and can sign in independently.</div>
         {error && <div style={{ fontSize:13,color:'var(--danger)',marginBottom:16 }}>{error}</div>}
         <div style={{ display:'flex',gap:10 }}>
           <button className="btn-ghost" onClick={onClose} style={{ flex:1 }}>Cancel</button>
-          <button className="btn-primary" onClick={handleCreate} disabled={!name || !email || saving} style={{ flex:1 }}>
-            {saving ? 'Sending invites...' : 'Create & invite'}
-          </button>
+          <button className="btn-primary" onClick={handleCreate} disabled={!name||!email||saving} style={{ flex:1 }}>{saving ? 'Sending invites...' : 'Create & invite'}</button>
         </div>
       </div>
     </div>
@@ -127,9 +152,7 @@ function NewListingModal({ clients, onClose, onCreated }) {
         </div>
         <div style={{ display:'flex',gap:10,marginTop:24 }}>
           <button className="btn-ghost" onClick={onClose} style={{ flex:1 }}>Cancel</button>
-          <button className="btn-primary" onClick={handleCreate} disabled={!form.address||!form.price||selectedClients.length===0||saving} style={{ flex:1 }}>
-            {saving ? 'Pushing...' : `Push to ${selectedClients.length} client${selectedClients.length!==1?'s':''}`}
-          </button>
+          <button className="btn-primary" onClick={handleCreate} disabled={!form.address||!form.price||selectedClients.length===0||saving} style={{ flex:1 }}>{saving ? 'Pushing...' : `Push to ${selectedClients.length} client${selectedClients.length!==1?'s':''}`}</button>
         </div>
       </div>
     </div>
@@ -158,8 +181,8 @@ export default function Admin() {
     const allListings = lSnap.docs.map(d => ({ id:d.id,...d.data() }));
     const allPending = pSnap.docs.map(d => ({ id:d.id,...d.data() }));
     const clientsWithStats = allUsers.map(u => {
-      const uListings = allListings.filter(l => l.clientId === u.id);
-      return { ...u,listingsCount:uListings.length,wantCount:uListings.filter(l => l.clientResponse==='yes').length,viewingCount:uListings.filter(l => l.status==='viewing').length };
+      const uL = allListings.filter(l => l.clientId === u.id);
+      return { ...u,listingsCount:uL.length,wantCount:uL.filter(l => l.clientResponse==='yes').length,viewingCount:uL.filter(l => l.status==='viewing').length };
     });
     setClients(clientsWithStats);
     setListings(allListings);
@@ -176,8 +199,8 @@ export default function Admin() {
 
   const resendInvite = async (p) => {
     try {
-      const link = await generateSignInWithEmailLink(auth, p.email, ACTION_CODE);
-      await sendBrandedEmail(p.email, link, true);
+      const link = await getMagicLink(p.email);
+      await sendInviteEmail(p.email, link);
       alert(`Invite resent to ${p.email}`);
     } catch (err) { alert('Error: '+err.message); }
   };
@@ -240,7 +263,7 @@ export default function Admin() {
         <div style={{ display:'flex',flexDirection:'column',gap:10 }}>
           {pending.length === 0 && <div className="card" style={{ textAlign:'center',padding:40,color:'var(--text-muted)' }}>No pending invites. All clients have activated their portal.</div>}
           {pending.map(p => (
-            <div key={p.id} style={{ display:'flex',alignItems:'center',gap:16,background:'var(--card-bg)',borderRadius:12,padding:'16px 20px',borderLeft:'4px solid var(--gold-mid)',opacity:0.85 }}>
+            <div key={p.id} style={{ display:'flex',alignItems:'center',gap:16,background:'var(--card-bg)',borderRadius:12,padding:'16px 20px',borderLeft:'4px solid var(--gold-mid)' }}>
               <div style={{ width:40,height:40,borderRadius:'50%',background:'var(--gold-mid)',color:'var(--gold-deeper)',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:13,flexShrink:0 }}>
                 {p.name?.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase()||'?'}
               </div>
@@ -254,7 +277,7 @@ export default function Admin() {
               </div>
               <span style={{ fontSize:11,fontWeight:600,letterSpacing:'0.06em',textTransform:'uppercase',color:'var(--gold-dark)',background:'var(--gold-card)',padding:'4px 10px',borderRadius:20 }}>Awaiting activation</span>
               <button className="btn-ghost" style={{ fontSize:12 }} onClick={() => resendInvite(p)}>Resend</button>
-              <button onClick={() => deletePending(p.id)} style={{ background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:18,padding:'0 4px',lineHeight:1 }} title="Remove invite">×</button>
+              <button onClick={() => deletePending(p.id)} style={{ background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:18,padding:'0 4px',lineHeight:1 }} title="Remove">×</button>
             </div>
           ))}
         </div>
