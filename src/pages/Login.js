@@ -9,7 +9,7 @@ import { auth } from '../firebase';
 import { useAuth } from '../hooks/useAuth';
 
 const actionCodeSettings = {
-  url: window.location.origin + '/ALH-Portal/#/login',
+  url: 'https://itsyouitsus.github.io/ALH-Portal/#/login',
   handleCodeInApp: true,
 };
 
