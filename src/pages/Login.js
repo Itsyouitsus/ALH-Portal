@@ -35,7 +35,7 @@ export default function Login() {
             window.localStorage.removeItem('alhLoginEmail');
             navigate('/');
           })
-          .catch(err => {
+          .catch(() => {
             setError('Link expired or invalid. Please request a new one.');
             setLoading(false);
           });
@@ -53,7 +53,11 @@ export default function Login() {
       window.localStorage.setItem('alhLoginEmail', email);
       setSent(true);
     } catch (err) {
-      setError(err.message || 'Something went wrong. Please try again.');
+      if (err.code === 'auth/quota-exceeded') {
+        setError('Daily email limit reached. Please try again tomorrow or contact home@amsterdamlifehomes.com.');
+      } else {
+        setError(err.message || 'Something went wrong. Please try again.');
+      }
     }
     setLoading(false);
   };
