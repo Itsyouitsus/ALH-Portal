@@ -8,7 +8,7 @@ import {
 import { auth } from '../firebase';
 import { useAuth } from '../hooks/useAuth';
 
-const REDIRECT_URL = 'https://itsyouitsus.github.io/ALH-Portal/#/login';
+const REDIRECT_URL = 'https://itsyouitsus.github.io/ALH-Portal/';
 
 const actionCodeSettings = {
   url: REDIRECT_URL,
