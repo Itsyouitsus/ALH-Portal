@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { auth, db } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc, setDoc, getDocs, collection, query, where, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, query, where, getDocs, deleteDoc, serverTimestamp } from 'firebase/firestore';
 
 const AuthContext = createContext(null);
 export const useAuth = () => useContext(AuthContext);
@@ -18,41 +18,45 @@ export function AuthProvider({ children }) {
         const userRef = doc(db, 'users', u.uid);
         const snap = await getDoc(userRef);
 
-        if (snap.exists()) {
-          // Returning user — just load profile
-          setProfile(snap.data());
-        } else {
-          // First sign-in — find their pendingClients record and activate
+        if (!snap.exists()) {
+          // First sign-in — seed user profile from pendingClients record
           const pendingSnap = await getDocs(
             query(collection(db, 'pendingClients'), where('email', '==', u.email))
           );
 
-          let newProfile;
-          if (!pendingSnap.empty) {
-            const pendingData = pendingSnap.docs[0].data();
-            newProfile = {
-              name: pendingData.name || '',
-              email: u.email,
-              role: 'client',
-              searchStarted: pendingData.searchStarted || new Date().toISOString().split('T')[0],
-              createdAt: serverTimestamp(),
-            };
-            // Delete all pendingClients docs for this email (could be dual-invite)
-            for (const d of pendingSnap.docs) {
-              await deleteDoc(doc(db, 'pendingClients', d.id));
-            }
-          } else {
-            // No pending record — create minimal profile
-            newProfile = {
-              name: '',
-              email: u.email,
-              role: 'client',
-              createdAt: serverTimestamp(),
-            };
+          const pendingData = pendingSnap.docs[0]?.data() || {};
+
+          await setDoc(userRef, {
+            email: u.email,
+            name: pendingData.name || u.email,
+            role: 'client',
+            createdAt: serverTimestamp(),
+            searchStarted: pendingData.searchStarted || new Date().toISOString().split('T')[0],
+          });
+
+          // Delete ALL pendingClients records for this email (handles dual-invite case)
+          for (const pendingDoc of pendingSnap.docs) {
+            await deleteDoc(doc(db, 'pendingClients', pendingDoc.id));
           }
 
-          await setDoc(userRef, newProfile);
-          setProfile(newProfile);
+          // Also clean up records tied to other emails in the same allEmails group
+          if (pendingData.allEmails?.length > 1) {
+            for (const otherEmail of pendingData.allEmails) {
+              if (otherEmail !== u.email) {
+                const otherSnap = await getDocs(
+                  query(collection(db, 'pendingClients'), where('email', '==', otherEmail), where('primaryEmail', '==', pendingData.primaryEmail))
+                );
+                for (const d of otherSnap.docs) {
+                  await deleteDoc(doc(db, 'pendingClients', d.id));
+                }
+              }
+            }
+          }
+
+          const freshSnap = await getDoc(userRef);
+          setProfile(freshSnap.data());
+        } else {
+          setProfile(snap.data());
         }
       } else {
         setProfile(null);
