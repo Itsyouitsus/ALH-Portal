@@ -15,7 +15,7 @@ async function generateMagicLink(email) {
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Failed to generate link');
-  return data.link;
+  return data.link || null;
 }
 
 // ── CopyLinkPanel — shown inline in client row after generating ──────────────
@@ -289,7 +289,7 @@ export default function Admin() {
       const links = [];
       for (const email of emails) {
         const link = await generateMagicLink(email);
-        links.push({ email, link });
+        links.push({ email, link, emailSent: !link });
       }
       setLinkState(s => ({ ...s, [client.id]: { loading: false, links, error: null } }));
       // Mark inviteSent on the client doc
@@ -408,7 +408,10 @@ export default function Admin() {
                     {ls.links.length > 1 && (
                       <div style={{ fontSize:11,color:'var(--text-muted)',marginBottom:4 }}>{email}</div>
                     )}
-                    <CopyLinkPanel link={link} onClose={() => closeLinkPanel(c.id)}/>
+                    {link
+                      ? <CopyLinkPanel link={link} onClose={() => closeLinkPanel(c.id)}/>
+                      : <div style={{marginTop:10,background:'var(--gold-card)',borderRadius:10,padding:'12px 14px',border:'1px solid var(--gold)',fontSize:13,color:'var(--text-muted)'}}>✓ Invite sent to {email}</div>
+                    }
                   </div>
                 ))}
                 {ls?.error && (
