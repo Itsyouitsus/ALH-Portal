@@ -1,43 +1,96 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { db } from '../firebase';
-import { collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, serverTimestamp, orderBy, query } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc,
+         serverTimestamp, orderBy, query } from 'firebase/firestore';
 
 const WORKER_URL = 'https://alh-email-worker.home-f67.workers.dev/';
 
-async function sendInvite(email) {
+// Generate magic link without sending email — returns the raw URL
+async function generateMagicLink(email) {
   const res = await fetch(WORKER_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, isInvite: true }),
+    body: JSON.stringify({ email, isInvite: true, linkOnly: true }),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to send invite');
-  return data;
+  if (!res.ok) throw new Error(data.error || 'Failed to generate link');
+  return data.link;
 }
 
+// ── CopyLinkPanel — shown inline in client row after generating ──────────────
+function CopyLinkPanel({ link, onClose }) {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    navigator.clipboard.writeText(link).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+  return (
+    <div style={{ marginTop:10,background:'var(--gold-card)',borderRadius:10,padding:'12px 14px',border:'1px solid var(--gold)' }}>
+      <div style={{ fontSize:11,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.07em',color:'var(--text-muted)',marginBottom:6 }}>
+        Portal link — copy and paste into your email
+      </div>
+      <div style={{ display:'flex',gap:8,alignItems:'center' }}>
+        <input
+          readOnly
+          value={link}
+          onClick={e => e.target.select()}
+          style={{ flex:1,fontSize:11,background:'var(--card-bg)',border:'1px solid var(--gold-mid)',borderRadius:6,padding:'7px 10px',fontFamily:'monospace',color:'var(--near-black)',minWidth:0 }}
+        />
+        <button className="btn-primary" style={{ fontSize:12,padding:'7px 14px',whiteSpace:'nowrap',flexShrink:0 }} onClick={copy}>
+          {copied ? '✓ Copied' : 'Copy link'}
+        </button>
+        <button onClick={onClose} style={{ background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:18,padding:'0 4px',lineHeight:1 }}>×</button>
+      </div>
+      <div style={{ fontSize:11,color:'var(--text-muted)',marginTop:6 }}>
+        This link expires in 24 hours. Generate a new one if needed.
+      </div>
+    </div>
+  );
+}
+
+// ── NewClientModal — creates draft profile, no invite sent ───────────────────
 function NewClientModal({ onClose, onCreated }) {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [email2, setEmail2] = useState('');
+  const [form, setForm] = useState({
+    name: '', email: '', email2: '',
+    phone: '', maxRent: '', moveIn: '', minSize: '',
+    from: '', employer1: '', contract1: '', salary1: '',
+    notes: '',
+  });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const handleCreate = async () => {
-    if (!name || !email) return;
+    if (!form.name || !form.email) return;
     setSaving(true);
     setError('');
     try {
-      const emails = [email, email2].filter(Boolean);
-      for (const em of emails) {
-        const clientRef = doc(collection(db, 'pendingClients'));
-        await setDoc(clientRef, {
-          name, email: em, primaryEmail: email, allEmails: emails,
-          role: 'client', createdAt: serverTimestamp(),
-          searchStarted: new Date().toISOString().split('T')[0],
-        });
-        await sendInvite(em);
-      }
+      const emails = [form.email, form.email2].filter(Boolean);
+      const clientRef = doc(collection(db, 'users'));
+      await setDoc(clientRef, {
+        name: form.name,
+        email: form.email,
+        allEmails: emails,
+        phone: form.phone,
+        maxRent: form.maxRent,
+        moveIn: form.moveIn,
+        minSize: form.minSize,
+        from: form.from,
+        employer1: form.employer1,
+        contract1: form.contract1,
+        salary1: form.salary1,
+        notes: form.notes,
+        role: 'client',
+        status: 'draft',        // draft = profile created, no invite sent yet
+        inviteSent: false,
+        createdAt: serverTimestamp(),
+        searchStarted: new Date().toISOString().split('T')[0],
+        // No Firebase Auth uid yet — will be merged on first sign-in
+        draftId: clientRef.id,
+      });
       onCreated();
       onClose();
     } catch (err) {
@@ -47,26 +100,83 @@ function NewClientModal({ onClose, onCreated }) {
   };
 
   return (
-    <div style={{ position:'fixed',inset:0,background:'rgba(26,22,18,0.55)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:500,padding:24 }} onClick={onClose}>
-      <div style={{ background:'var(--gold-bg)',borderRadius:16,padding:'32px 28px',width:'100%',maxWidth:440 }} onClick={e => e.stopPropagation()}>
-        <div style={{ fontSize:20,fontWeight:700,marginBottom:20 }}>Add new client</div>
-        <div className="field"><label>Full name</label><input value={name} onChange={e => setName(e.target.value)} placeholder="Sarah & James Collins"/></div>
-        <div className="field"><label>Email address</label><input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="client@example.com"/></div>
-        <div className="field">
-          <label>Second email <span style={{ fontWeight:400,color:'var(--text-muted)' }}>(optional)</span></label>
-          <input type="email" value={email2} onChange={e => setEmail2(e.target.value)} placeholder="partner@example.com"/>
+    <div style={{ position:'fixed',inset:0,background:'rgba(26,22,18,0.55)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:500,padding:24,overflowY:'auto' }} onClick={onClose}>
+      <div style={{ background:'var(--gold-bg)',borderRadius:16,padding:'32px 28px',width:'100%',maxWidth:520,margin:'auto' }} onClick={e => e.stopPropagation()}>
+        <div style={{ fontSize:20,fontWeight:700,marginBottom:4 }}>New client profile</div>
+        <div style={{ fontSize:13,color:'var(--text-muted)',marginBottom:20 }}>Fill in during video call. No invite is sent until you generate a portal link.</div>
+
+        <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10 }}>
+          <div className="field" style={{ gridColumn:'1/-1' }}>
+            <label>Full name(s) <span style={{ color:'var(--danger)' }}>*</span></label>
+            <input value={form.name} onChange={e => set('name',e.target.value)} placeholder="Sarah & James Collins"/>
+          </div>
+          <div className="field">
+            <label>Primary email <span style={{ color:'var(--danger)' }}>*</span></label>
+            <input type="email" value={form.email} onChange={e => set('email',e.target.value)} placeholder="client@example.com"/>
+          </div>
+          <div className="field">
+            <label>Second email <span style={{ fontWeight:400,color:'var(--text-muted)' }}>(optional)</span></label>
+            <input type="email" value={form.email2} onChange={e => set('email2',e.target.value)} placeholder="partner@example.com"/>
+          </div>
+          <div className="field">
+            <label>Phone</label>
+            <input value={form.phone} onChange={e => set('phone',e.target.value)} placeholder="+31 6 ..."/>
+          </div>
+          <div className="field">
+            <label>Originally from</label>
+            <input value={form.from} onChange={e => set('from',e.target.value)} placeholder="Country / city"/>
+          </div>
+          <div className="field">
+            <label>Max rent (€/month)</label>
+            <input value={form.maxRent} onChange={e => set('maxRent',e.target.value)} placeholder="3,000"/>
+          </div>
+          <div className="field">
+            <label>Move-in date</label>
+            <input type="date" value={form.moveIn} onChange={e => set('moveIn',e.target.value)}/>
+          </div>
+          <div className="field">
+            <label>Employer</label>
+            <input value={form.employer1} onChange={e => set('employer1',e.target.value)} placeholder="Company name"/>
+          </div>
+          <div className="field">
+            <label>Contract type</label>
+            <select value={form.contract1} onChange={e => set('contract1',e.target.value)}>
+              <option value="">Select</option>
+              {['Permanent','Temporary','Freelance'].map(o => <option key={o}>{o}</option>)}
+            </select>
+          </div>
+          <div className="field">
+            <label>Gross salary (€/month)</label>
+            <input type="number" value={form.salary1} onChange={e => set('salary1',e.target.value)} placeholder="5000"/>
+          </div>
+          <div className="field">
+            <label>Min size (m²)</label>
+            <input type="number" value={form.minSize} onChange={e => set('minSize',e.target.value)} placeholder="70"/>
+          </div>
+          <div className="field" style={{ gridColumn:'1/-1' }}>
+            <label>Notes from video call</label>
+            <textarea value={form.notes} onChange={e => set('notes',e.target.value)}
+              placeholder="Key things from the call..." rows={3}
+              style={{ width:'100%',background:'var(--gold-bg)',border:'1px solid var(--gold-mid)',borderRadius:7,padding:'9px 12px',fontSize:13,resize:'vertical',fontFamily:"'DM Sans',sans-serif" }}/>
+          </div>
         </div>
-        <div style={{ fontSize:12,color:'var(--text-muted)',marginBottom:error ? 8 : 20 }}>Both addresses will receive a portal invite and can sign in independently.</div>
-        {error && <div style={{ fontSize:13,color:'var(--danger)',marginBottom:16 }}>{error}</div>}
+
+        {error && <div style={{ fontSize:13,color:'var(--danger)',marginBottom:12,marginTop:4 }}>{error}</div>}
+        <div style={{ fontSize:12,color:'var(--text-muted)',marginBottom:16,marginTop:8,background:'var(--gold-card)',borderRadius:8,padding:'8px 12px' }}>
+          ℹ️ No email will be sent. After the call, use "Generate link" on the client row to get a portal link to include in your follow-up email.
+        </div>
         <div style={{ display:'flex',gap:10 }}>
           <button className="btn-ghost" onClick={onClose} style={{ flex:1 }}>Cancel</button>
-          <button className="btn-primary" onClick={handleCreate} disabled={!name||!email||saving} style={{ flex:1 }}>{saving ? 'Sending invites...' : 'Create & invite'}</button>
+          <button className="btn-primary" onClick={handleCreate} disabled={!form.name||!form.email||saving} style={{ flex:1 }}>
+            {saving ? 'Saving...' : 'Save profile'}
+          </button>
         </div>
       </div>
     </div>
   );
 }
 
+// ── NewListingModal (unchanged) ───────────────────────────────────────────────
 function NewListingModal({ clients, onClose, onCreated }) {
   const [form, setForm] = useState({ address:'',area:'',city:'Amsterdam',price:'',serviceCosts:'',size:'',beds:'',furnishing:'Furnished',availableFrom:'',energyLabel:'',floor:'',elevator:'',deposit:'',minPeriod:'',notes:'' });
   const [selectedClients, setSelectedClients] = useState([]);
@@ -128,34 +238,39 @@ function NewListingModal({ clients, onClose, onCreated }) {
   );
 }
 
+// ── Main Admin component ──────────────────────────────────────────────────────
 export default function Admin() {
   const { profile } = useAuth();
   const [tab, setTab] = useState('clients');
   const [clients, setClients] = useState([]);
-  const [pending, setPending] = useState([]);
   const [listings, setListings] = useState([]);
   const [showNewClient, setShowNewClient] = useState(false);
   const [showNewListing, setShowNewListing] = useState(false);
   const [loading, setLoading] = useState(true);
+  // Per-client link generation state: { [clientId]: { loading, link, error } }
+  const [linkState, setLinkState] = useState({});
 
   if (profile?.role !== 'admin') return <div className="page"><div className="page-title">Access denied</div></div>;
 
   const fetchAll = async () => {
-    const [uSnap, lSnap, pSnap] = await Promise.all([
+    const [uSnap, lSnap] = await Promise.all([
       getDocs(collection(db,'users')),
       getDocs(query(collection(db,'listings'), orderBy('createdAt','desc'))),
-      getDocs(collection(db,'pendingClients')),
     ]);
     const allUsers = uSnap.docs.map(d => ({ id:d.id,...d.data() })).filter(u => u.role !== 'admin');
     const allListings = lSnap.docs.map(d => ({ id:d.id,...d.data() }));
-    const allPending = pSnap.docs.map(d => ({ id:d.id,...d.data() }));
     const clientsWithStats = allUsers.map(u => {
       const uL = allListings.filter(l => l.clientId === u.id);
       return { ...u,listingsCount:uL.length,wantCount:uL.filter(l => l.clientResponse==='yes').length,viewingCount:uL.filter(l => l.status==='viewing').length };
     });
+    // Sort: active clients first, drafts below
+    clientsWithStats.sort((a,b) => {
+      if (a.status==='draft' && b.status!=='draft') return 1;
+      if (a.status!=='draft' && b.status==='draft') return -1;
+      return 0;
+    });
     setClients(clientsWithStats);
     setListings(allListings);
-    setPending(allPending);
     setLoading(false);
   };
 
@@ -166,28 +281,41 @@ export default function Admin() {
     setListings(ls => ls.map(l => l.id===id ? { ...l,status } : l));
   };
 
-  const resendInvite = async (p) => {
+  const handleGenerateLink = async (client) => {
+    // Generate links for all emails on this client
+    const emails = client.allEmails?.length ? client.allEmails : [client.email];
+    setLinkState(s => ({ ...s, [client.id]: { loading: true, links: null, error: null } }));
     try {
-      await sendInvite(p.email);
-      alert(`Invite resent to ${p.email}`);
-    } catch (err) { alert('Error: '+err.message); }
+      const links = [];
+      for (const email of emails) {
+        const link = await generateMagicLink(email);
+        links.push({ email, link });
+      }
+      setLinkState(s => ({ ...s, [client.id]: { loading: false, links, error: null } }));
+      // Mark inviteSent on the client doc
+      await updateDoc(doc(db,'users',client.id), { inviteSent: true, inviteSentAt: serverTimestamp() });
+      setClients(cs => cs.map(c => c.id===client.id ? { ...c,inviteSent:true } : c));
+    } catch (err) {
+      setLinkState(s => ({ ...s, [client.id]: { loading: false, links: null, error: err.message } }));
+    }
   };
 
-  const deletePending = async (id) => {
-    await deleteDoc(doc(db,'pendingClients',id));
-    setPending(ps => ps.filter(p => p.id !== id));
+  const closeLinkPanel = (clientId) => {
+    setLinkState(s => ({ ...s, [clientId]: null }));
   };
 
   if (loading) return <div className="loading-screen">Loading admin panel...</div>;
 
-  const TABS = [['clients',`Active (${clients.length})`],['pending',`Pending (${pending.length})`],['listings','All listings']];
+  const draftCount = clients.filter(c => c.status==='draft').length;
+  const activeCount = clients.filter(c => c.status!=='draft').length;
+  const TABS = [['clients',`Clients (${clients.length})`],['listings','All listings']];
 
   return (
     <div className="page">
       <div className="page-header">
         <div>
           <div className="page-title">Admin panel</div>
-          <div className="page-sub">{clients.length} active · {pending.length} pending · {listings.length} listings</div>
+          <div className="page-sub">{activeCount} active · {draftCount} draft · {listings.length} listings</div>
         </div>
         <div style={{ display:'flex',gap:10 }}>
           <button className="btn-ghost" onClick={() => setShowNewClient(true)}>+ Add client</button>
@@ -195,7 +323,7 @@ export default function Admin() {
         </div>
       </div>
 
-      <div style={{ display:'flex',gap:4,marginBottom:24,background:'var(--card-bg)',borderRadius:10,padding:4,maxWidth:480 }}>
+      <div style={{ display:'flex',gap:4,marginBottom:24,background:'var(--card-bg)',borderRadius:10,padding:4,maxWidth:360 }}>
         {TABS.map(([v,l]) => (
           <button key={v} onClick={() => setTab(v)} style={{ flex:1,padding:'9px 16px',borderRadius:7,fontSize:13,fontWeight:500,cursor:'pointer',border:'none',fontFamily:"'DM Sans', sans-serif",background:tab===v?'var(--near-black)':'transparent',color:tab===v?'var(--gold-bg)':'var(--text-muted)',transition:'all 0.15s' }}>{l}</button>
         ))}
@@ -203,51 +331,92 @@ export default function Admin() {
 
       {tab === 'clients' && (
         <div style={{ display:'flex',flexDirection:'column',gap:10 }}>
-          {clients.length === 0 && <div className="card" style={{ textAlign:'center',padding:40,color:'var(--text-muted)' }}>No active clients yet.</div>}
-          {clients.map(c => (
-            <div key={c.id} style={{ display:'flex',alignItems:'center',gap:16,background:'var(--card-bg)',borderRadius:12,padding:'16px 20px',borderLeft:'4px solid var(--gold)' }}>
-              <div style={{ width:40,height:40,borderRadius:'50%',background:'var(--gold)',color:'var(--gold-deeper)',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:13,flexShrink:0 }}>
-                {c.name?.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase()||'?'}
-              </div>
-              <div style={{ flex:1 }}>
-                <div style={{ fontSize:14,fontWeight:700 }}>{c.name||c.email}</div>
-                <div style={{ fontSize:12,color:'var(--text-muted)',marginTop:1 }}>{c.email}{c.maxRent&&` · Budget ${c.maxRent}`}{c.searchStarted&&` · Started ${c.searchStarted}`}</div>
-              </div>
-              <div style={{ display:'flex',gap:20 }}>
-                {[[c.listingsCount||0,'Found'],[c.wantCount||0,'Want'],[c.viewingCount||0,'Viewing']].map(([val,label]) => (
-                  <div key={label} style={{ textAlign:'center' }}>
-                    <div style={{ fontSize:18,fontWeight:700,color:label==='Want'?'var(--success)':label==='Viewing'?'var(--blue)':'var(--near-black)' }}>{val}</div>
-                    <div style={{ fontSize:10,textTransform:'uppercase',letterSpacing:'0.05em',color:'var(--text-muted)' }}>{label}</div>
+          {clients.length === 0 && <div className="card" style={{ textAlign:'center',padding:40,color:'var(--text-muted)' }}>No clients yet. Add your first client above.</div>}
+
+          {clients.map(c => {
+            const isDraft = c.status === 'draft';
+            const ls = linkState[c.id];
+            return (
+              <div key={c.id} style={{ background:'var(--card-bg)',borderRadius:12,padding:'16px 20px',borderLeft:`4px solid ${isDraft ? 'var(--gold-mid)' : 'var(--gold)'}` }}>
+                <div style={{ display:'flex',alignItems:'center',gap:16 }}>
+                  {/* Avatar */}
+                  <div style={{ width:40,height:40,borderRadius:'50%',background:isDraft?'var(--gold-mid)':'var(--gold)',color:'var(--gold-deeper)',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:13,flexShrink:0 }}>
+                    {c.name?.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase()||'?'}
+                  </div>
+
+                  {/* Name + email */}
+                  <div style={{ flex:1,minWidth:0 }}>
+                    <div style={{ display:'flex',alignItems:'center',gap:8 }}>
+                      <div style={{ fontSize:14,fontWeight:700 }}>{c.name||c.email}</div>
+                      {isDraft && (
+                        <span style={{ fontSize:10,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase',background:'var(--gold-card)',color:'var(--gold-dark)',padding:'2px 8px',borderRadius:20 }}>Draft</span>
+                      )}
+                      {!isDraft && c.inviteSent && (
+                        <span style={{ fontSize:10,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase',background:'var(--success-bg)',color:'var(--success)',padding:'2px 8px',borderRadius:20 }}>Active</span>
+                      )}
+                    </div>
+                    <div style={{ fontSize:12,color:'var(--text-muted)',marginTop:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>
+                      {c.email}
+                      {c.allEmails?.length > 1 && <span style={{ marginLeft:6,color:'var(--text-muted)' }}>+{c.allEmails.length-1}</span>}
+                      {c.maxRent && ` · Budget ${c.maxRent}`}
+                      {c.searchStarted && ` · Started ${c.searchStarted}`}
+                    </div>
+                  </div>
+
+                  {/* Stats — only for active clients */}
+                  {!isDraft && (
+                    <div style={{ display:'flex',gap:20 }}>
+                      {[[c.listingsCount||0,'Found'],[c.wantCount||0,'Want'],[c.viewingCount||0,'Viewing']].map(([val,label]) => (
+                        <div key={label} style={{ textAlign:'center' }}>
+                          <div style={{ fontSize:18,fontWeight:700,color:label==='Want'?'var(--success)':label==='Viewing'?'var(--blue)':'var(--near-black)' }}>{val}</div>
+                          <div style={{ fontSize:10,textTransform:'uppercase',letterSpacing:'0.05em',color:'var(--text-muted)' }}>{label}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div style={{ display:'flex',gap:8,flexShrink:0 }}>
+                    {isDraft ? (
+                      <button
+                        className="btn-primary"
+                        style={{ fontSize:12,padding:'7px 14px' }}
+                        disabled={ls?.loading}
+                        onClick={() => handleGenerateLink(c)}
+                      >
+                        {ls?.loading ? 'Generating...' : c.inviteSent ? 'New link' : 'Generate link'}
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          className="btn-ghost"
+                          style={{ fontSize:12 }}
+                          disabled={ls?.loading}
+                          onClick={() => handleGenerateLink(c)}
+                        >
+                          {ls?.loading ? '...' : 'New link'}
+                        </button>
+                        <button className="btn-ghost" style={{ fontSize:12 }}>Open portal</button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Link panel — shown below the row after generating */}
+                {ls?.links && ls.links.map(({ email, link }) => (
+                  <div key={email} style={{ marginTop:email===ls.links[0].email?10:6 }}>
+                    {ls.links.length > 1 && (
+                      <div style={{ fontSize:11,color:'var(--text-muted)',marginBottom:4 }}>{email}</div>
+                    )}
+                    <CopyLinkPanel link={link} onClose={() => closeLinkPanel(c.id)}/>
                   </div>
                 ))}
+                {ls?.error && (
+                  <div style={{ marginTop:8,fontSize:13,color:'var(--danger)' }}>Error: {ls.error}</div>
+                )}
               </div>
-              <button className="btn-ghost" style={{ fontSize:12 }}>Open portal</button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {tab === 'pending' && (
-        <div style={{ display:'flex',flexDirection:'column',gap:10 }}>
-          {pending.length === 0 && <div className="card" style={{ textAlign:'center',padding:40,color:'var(--text-muted)' }}>No pending invites. All clients have activated their portal.</div>}
-          {pending.map(p => (
-            <div key={p.id} style={{ display:'flex',alignItems:'center',gap:16,background:'var(--card-bg)',borderRadius:12,padding:'16px 20px',borderLeft:'4px solid var(--gold-mid)' }}>
-              <div style={{ width:40,height:40,borderRadius:'50%',background:'var(--gold-mid)',color:'var(--gold-deeper)',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:13,flexShrink:0 }}>
-                {p.name?.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase()||'?'}
-              </div>
-              <div style={{ flex:1 }}>
-                <div style={{ fontSize:14,fontWeight:700 }}>{p.name}</div>
-                <div style={{ fontSize:12,color:'var(--text-muted)',marginTop:1 }}>
-                  {p.email}
-                  {p.allEmails?.length > 1 && <span style={{ marginLeft:8,background:'var(--gold-card)',padding:'1px 7px',borderRadius:10,fontSize:11 }}>+{p.allEmails.length-1} more</span>}
-                  {p.createdAt && ` · Invited ${new Date(p.createdAt.seconds*1000).toLocaleDateString('en-GB',{day:'numeric',month:'short'})}`}
-                </div>
-              </div>
-              <span style={{ fontSize:11,fontWeight:600,letterSpacing:'0.06em',textTransform:'uppercase',color:'var(--gold-dark)',background:'var(--gold-card)',padding:'4px 10px',borderRadius:20 }}>Awaiting activation</span>
-              <button className="btn-ghost" style={{ fontSize:12 }} onClick={() => resendInvite(p)}>Resend</button>
-              <button onClick={() => deletePending(p.id)} style={{ background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:18,padding:'0 4px',lineHeight:1 }} title="Remove">×</button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
