@@ -371,3 +371,19 @@ body {
 @media (min-width: 900px) {
   .mobile-only { display: none !important; }
 }
+
+/* Styled scrollbar for listings list */
+.listings-scroll::-webkit-scrollbar {
+  width: 5px;
+}
+.listings-scroll::-webkit-scrollbar-track {
+  background: var(--gold-bg);
+  border-radius: 10px;
+}
+.listings-scroll::-webkit-scrollbar-thumb {
+  background: var(--gold-mid);
+  border-radius: 10px;
+}
+.listings-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--gold);
+}
