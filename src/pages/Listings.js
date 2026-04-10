@@ -227,19 +227,26 @@ function ListingCard({ listing, onResponse, onOpenDetail, hoveredId, onHover, ca
 
   const accentColor = statusKey === 'offer_accepted' ? '#1a7a3c' : isYes ? 'var(--gold)' : isNo ? 'var(--gold-mid)' : 'transparent';
 
+  const isHovered = hoveredId === listing.id;
+
   return (
     <div
+      ref={cardRef}
+      onMouseEnter={() => onHover && onHover(listing.id)}
+      onMouseLeave={() => onHover && onHover(null)}
       onTouchStart={e => { startX.current = e.touches[0].clientX; setSwiping(true); }}
       onTouchMove={e => { if (!startX.current) return; setSwipeX(e.touches[0].clientX - startX.current); }}
       onTouchEnd={() => { if (swipeX > 60) onResponse(listing, 'yes'); else if (swipeX < -60) onResponse(listing, 'no'); setSwipeX(0); setSwiping(false); startX.current = null; }}
       style={{
-        background: 'var(--card-bg)',
+        background: isHovered ? 'var(--gold-card)' : 'var(--card-bg)',
         borderRadius: 12,
         padding: '11px 16px',
-        borderLeft: `4px solid ${accentColor}`,
-        opacity: isNo ? 0.75 : 1,
+        scrollMarginTop: 12,,
+        borderLeft: `4px solid ${isHovered ? 'var(--gold)' : accentColor}`,
+        opacity: isNo && !isHovered ? 0.75 : 1,
+        outline: isHovered ? '2px solid var(--gold)' : 'none',
         transform: `translateX(${swipeX * 0.3}px)`,
-        transition: swiping ? 'none' : 'transform 0.3s ease',
+        transition: swiping ? 'none' : 'all 0.15s ease',
         position: 'relative', overflow: 'hidden',
       }}
     >
