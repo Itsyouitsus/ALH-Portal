@@ -19,6 +19,9 @@ const STATUS_CONFIG = {
   not_interested:  { label: 'Not interested',     color: 'var(--text-muted)', bg: 'var(--gold-card)' },
 };
 
+// Module-level geocode cache — persists across tab switches
+const _geocodeCache = new Map();
+
 function getStatusKey(l) {
   const s = (l.status || '').toLowerCase();
   if (s === 'viewing') return 'viewing';
@@ -80,11 +83,19 @@ function MapPane({ listings, height }) {
 
     const geocodeAndPlace = async (listing) => {
       try {
-        const q = encodeURIComponent(`${listing.address}, Amsterdam, Netherlands`);
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1`);
-        const data = await res.json();
-        if (!data[0]) return;
-        const lat = parseFloat(data[0].lat), lng = parseFloat(data[0].lon);
+        const cacheKey = listing.address;
+        let lat, lng;
+        if (_geocodeCache.has(cacheKey)) {
+          ({ lat, lng } = _geocodeCache.get(cacheKey));
+        } else {
+          const q = encodeURIComponent(`${listing.address}, Amsterdam, Netherlands`);
+          const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1`);
+          const data = await res.json();
+          if (!data[0]) return;
+          lat = parseFloat(data[0].lat);
+          lng = parseFloat(data[0].lon);
+          _geocodeCache.set(cacheKey, { lat, lng });
+        }
         const color = markerColor(listing);
         const statusKey = getStatusKey(listing);
         const statusCfg = statusKey ? STATUS_CONFIG[statusKey] : null;
@@ -344,8 +355,6 @@ export default function Listings() {
   const [modalListing, setModalListing] = useState(null);
   const [detailListing, setDetailListing] = useState(null);
   const [tab, setTab] = useState('new');
-  const isDesktop = window.innerWidth >= 900;
-
   useEffect(() => {
     if (!user) return;
     getDocs(query(collection(db, 'listings'), where('clientId', '==', user.uid))).then(snap => {
@@ -381,11 +390,10 @@ export default function Listings() {
   const offers    = listings.filter(l => ['offer_accepted','offer_rejected','offer_cancelled'].includes(getStatusKey(l))).length;
 
   const TABS = [
-    { key: 'new',  label: 'New',        count: newCount,       dot: newCount > 0 },
-    { key: 'yes',  label: 'Interested', count: yesCount },
+    { key: 'new',  label: 'New',            count: newCount,       dot: newCount > 0 },
+    { key: 'yes',  label: 'Interested',     count: yesCount },
     { key: 'no',   label: 'Not interested', count: noCount },
-    { key: 'all',  label: 'All',        count: listings.length },
-    ...(!isDesktop ? [{ key: 'map', label: '🗺 Map' }] : []),
+    { key: 'all',  label: 'All',            count: listings.length },
   ];
 
   const filtered = listings.filter(l => {
@@ -447,26 +455,21 @@ export default function Listings() {
   );
 
   return (
-    <div className="page" style={{ maxWidth: isDesktop ? 1800 : undefined, paddingLeft: isDesktop ? 40 : undefined, paddingRight: isDesktop ? 40 : undefined, paddingTop: isDesktop ? 16 : undefined, overflow: isDesktop ? 'hidden' : undefined, height: isDesktop ? 'calc(100vh - 56px)' : undefined, display: isDesktop ? 'flex' : undefined, flexDirection: isDesktop ? 'column' : undefined, boxSizing: isDesktop ? 'border-box' : undefined, padding: isDesktop ? '16px 40px' : undefined }}>
+    <div className="page listings-page">
 
 
       {statsBar}
 
-      {isDesktop ? (
-        // Desktop: flex fills remaining viewport height after stats
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, flex: 1, minHeight: 0, overflow: 'hidden' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-            {tabBar}
-            <div className="listings-scroll" style={{ overflowY: 'auto', flex: 1, minHeight: 0, paddingRight: 6 }}>
-              {cardList}
-            </div>
+      {/* Desktop: two-column grid. Mobile: stacked */}
+      <div className="listings-grid">
+        <div className="listings-list-col">
+          {tabBar}
+          <div className="listings-scroll">
+            {cardList}
           </div>
-          <MapPane listings={mapListings} height="100%" />
         </div>
-      ) : (
-        // Mobile: tabs + list (map is a tab)
-        <>{tabBar}{cardList}</>
-      )}
+        <MapPane listings={mapListings} height="100%" />
+      </div>
 
       {modalListing && <NoFeedbackModal listing={modalListing} onSubmit={r => submitResponse(modalListing, 'no', r)} onClose={() => setModalListing(null)} />}
       {detailListing && <ListingDetailModal listing={detailListing} onClose={() => setDetailListing(null)} />}
