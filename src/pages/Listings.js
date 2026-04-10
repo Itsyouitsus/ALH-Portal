@@ -72,6 +72,8 @@ function MapPane({ listings, height }) {
     const map = mapInstanceRef.current;
     markersRef.current.forEach(m => m.remove());
     markersRef.current = [];
+    // Reset to Amsterdam overview each time listings change
+    mapInstanceRef.current.setView([52.3676, 4.9041], 12);
 
     const geocodeAndPlace = async (listing) => {
       try {
@@ -112,9 +114,9 @@ function MapPane({ listings, height }) {
   }, [mapReady, listings]);
 
   return (
-    <div style={{ position: 'sticky', top: 20, borderRadius: 14, overflow: 'hidden', border: '1px solid var(--gold-mid)', height: height || 'calc(100vh - 160px)' }}>
-      {!mapReady && <div style={{ height: '100%', background: 'var(--card-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 14 }}>Loading map...</div>}
-      <div ref={mapRef} style={{ height: '100%', display: mapReady ? 'block' : 'none' }} />
+    <div style={{ borderRadius: 14, overflow: 'hidden', border: '1px solid var(--gold-mid)', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      {!mapReady && <div style={{ flex: 1, background: 'var(--card-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 14 }}>Loading map...</div>}
+      <div ref={mapRef} style={{ flex: 1, minHeight: 0, display: mapReady ? 'block' : 'none' }} />
       {mapReady && (
         <div style={{ position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 999, background: 'white', borderRadius: 20, padding: '4px 14px', fontSize: 11, color: '#555', display: 'flex', gap: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.12)', whiteSpace: 'nowrap' }}>
           <span><span style={{ color: '#22c55e', fontWeight: 700 }}>●</span> Interested</span>
@@ -137,7 +139,7 @@ function ListingDetailModal({ listing, onClose }) {
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 20 }}>
           <span style={{ fontSize: 28, fontWeight: 700 }}>€{listing.price?.toLocaleString()}</span>
           <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>/month</span>
-          {listing.serviceCosts > 0 && <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 4 }}>+€{listing.serviceCosts} service costs</span>}
+
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 20px', marginBottom: 20 }}>
           {[['Size', listing.size], ['Bedrooms', listing.beds ? `${listing.beds} bed${listing.beds > 1 ? 's' : ''}` : null], ['Furnishing', listing.furnishing], ['Available', listing.availableFrom], ['Neighbourhood', listing.area], ['Energy label', listing.energyLabel], ['Floor', listing.floor]].filter(([, v]) => v).map(([label, val]) => (
@@ -287,7 +289,6 @@ function ListingCard({ listing, onResponse, onOpenDetail }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: 'var(--near-black)', marginBottom: 6 }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           {listing.availableFrom}
-          {listing.serviceCosts > 0 && <span style={{ marginLeft: 12, fontSize: 12, color: 'var(--text-muted)' }}>+€{listing.serviceCosts?.toLocaleString()} service costs</span>}
         </div>
       )}
 
@@ -435,7 +436,7 @@ export default function Listings() {
   );
 
   return (
-    <div className="page" style={{ maxWidth: isDesktop ? 1800 : undefined, paddingLeft: isDesktop ? 40 : undefined, paddingRight: isDesktop ? 40 : undefined, paddingTop: isDesktop ? 16 : undefined }}>
+    <div className="page" style={{ maxWidth: isDesktop ? 1800 : undefined, paddingLeft: isDesktop ? 40 : undefined, paddingRight: isDesktop ? 40 : undefined, paddingTop: isDesktop ? 16 : undefined, overflowY: isDesktop ? 'hidden' : undefined, height: isDesktop ? '100vh' : undefined, display: isDesktop ? 'flex' : undefined, flexDirection: isDesktop ? 'column' : undefined }}>
       <div style={{ marginBottom: 12 }}>
         <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'Cormorant Garamond', serif", color: 'var(--near-black)', lineHeight: 1 }}>Your listings</div>
         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>Properties matched to your search profile</div>
@@ -444,15 +445,15 @@ export default function Listings() {
       {statsBar}
 
             {isDesktop ? (
-        // Desktop: full-width stats above, then tabs+list left, map right
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'start' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 226px)' }}>
+        // Desktop: flex fills remaining viewport height after stats
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, flex: 1, minHeight: 0 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
             {tabBar}
-            <div style={{ overflowY: 'auto', flex: 1, paddingRight: 6 }}>
+            <div style={{ overflowY: 'auto', flex: 1, minHeight: 0, paddingRight: 6 }}>
               {cardList}
             </div>
           </div>
-          <MapPane listings={mapListings} height="calc(100vh - 226px)" />
+          <MapPane listings={mapListings} height="100%" />
         </div>
       ) : (
         // Mobile: tabs + list (map is a tab)
