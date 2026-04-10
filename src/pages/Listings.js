@@ -38,10 +38,10 @@ function markerColor(l) {
 }
 
 // ── Map pane ──────────────────────────────────────────────────────────────────
-function MapPane({ listings, height }) {
+function MapPane({ listings, height, hoveredId, onMarkerHover, onMarkerClick }) {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
-  const markersRef = useRef([]);
+  const markersRef = useRef({});  // keyed by listing.id
   const [mapReady, setMapReady] = useState(false);
 
   useEffect(() => {
@@ -74,8 +74,8 @@ function MapPane({ listings, height }) {
     const map = mapInstanceRef.current;
 
     // Clear old markers
-    markersRef.current.forEach(m => m.remove());
-    markersRef.current = [];
+    Object.values(markersRef.current).forEach(m => m.remove());
+    markersRef.current = {};
     map.setView([52.3676, 4.9041], 12);
     setTimeout(() => { map.invalidateSize(); map.invalidateSize(); }, 200);
 
@@ -108,9 +108,34 @@ function MapPane({ listings, height }) {
         </div>`);
 
       const marker = L.marker([listing.lat, listing.lng], { icon }).addTo(map).bindPopup(popup);
-      markersRef.current.push(marker);
+      // Hover: highlight this marker, notify parent
+      marker.getElement()?.addEventListener('mouseenter', () => onMarkerHover && onMarkerHover(listing.id));
+      marker.getElement()?.addEventListener('mouseleave', () => onMarkerHover && onMarkerHover(null));
+      // Click on marker: scroll to listing in the list
+      marker.on('click', () => onMarkerClick && onMarkerClick(listing.id));
+      markersRef.current[listing.id] = marker;
     });
   }, [mapReady, listings]);
+
+  // Highlight marker when hoveredId changes
+  useEffect(() => {
+    Object.entries(markersRef.current).forEach(([id, marker]) => {
+      const el = marker.getElement();
+      if (!el) return;
+      const pin = el.querySelector('div');
+      if (!pin) return;
+      if (id === hoveredId) {
+        pin.style.transform = 'rotate(-45deg) scale(1.35)';
+        pin.style.boxShadow = '0 4px 16px rgba(0,0,0,0.4)';
+        pin.style.zIndex = '1000';
+        marker.getElement().style.zIndex = '1000';
+      } else {
+        pin.style.transform = 'rotate(-45deg) scale(1)';
+        pin.style.boxShadow = '0 2px 8px rgba(0,0,0,0.25)';
+        marker.getElement().style.zIndex = '';
+      }
+    });
+  }, [hoveredId]);
 
   return (
     <div style={{ borderRadius: 14, overflow: 'hidden', border: '1px solid var(--gold-mid)', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', position: 'relative' }}>
@@ -189,7 +214,7 @@ function NoFeedbackModal({ listing, onSubmit, onClose }) {
 //         [📅 available from]
 //         [status badge if any]
 //         [no reasons if passed]
-function ListingCard({ listing, onResponse, onOpenDetail }) {
+function ListingCard({ listing, onResponse, onOpenDetail, hoveredId, onHover, cardRef }) {
   const startX = useRef(null);
   const [swipeX, setSwipeX] = useState(0);
   const [swiping, setSwiping] = useState(false);
@@ -336,6 +361,8 @@ export default function Listings() {
   const [modalListing, setModalListing] = useState(null);
   const [detailListing, setDetailListing] = useState(null);
   const [tab, setTab] = useState('new');
+  const [hoveredId, setHoveredId] = useState(null);
+  const cardRefs = useRef({});  // listing.id → DOM ref
   useEffect(() => {
     if (!user) return;
     getDocs(query(collection(db, 'listings'), where('clientId', '==', user.uid))).then(snap => {
@@ -354,6 +381,24 @@ export default function Listings() {
     if (response === 'toggle') { submitResponse(listing, null, []); return; }
     if (response === 'no') setModalListing(listing);
     else submitResponse(listing, 'yes', []);
+  };
+
+  const handleMarkerClick = (id) => {
+    // Find which tab this listing belongs to and switch to it if needed
+    const listing = listings.find(l => l.id === id);
+    if (!listing) return;
+    // Switch to the tab that would show this listing
+    const sk = getStatusKey(listing);
+    if (!listing.clientResponse && !sk) setTab('new');
+    else if (listing.clientResponse === 'yes' || sk) setTab('yes');
+    else if (listing.clientResponse === 'no' && !sk) setTab('no');
+    // Scroll after a tick (tab change may re-render)
+    setTimeout(() => {
+      const el = cardRefs.current[id];
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      setHoveredId(id);
+      setTimeout(() => setHoveredId(null), 2000);
+    }, 80);
   };
 
   const submitResponse = async (listing, response, reasons) => {
@@ -430,7 +475,18 @@ export default function Listings() {
       <div className="card" style={{ textAlign: 'center', padding: 32, color: 'var(--text-muted)', fontSize: 14 }}>No listings in this category yet.</div>
     ) : (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {filtered.map(l => <ListingCard key={l.id} listing={l} onResponse={handleResponse} onOpenDetail={setDetailListing} />)}
+        {filtered.map(l => {
+              if (!cardRefs.current[l.id]) cardRefs.current[l.id] = { current: null };
+              return <ListingCard
+                key={l.id}
+                listing={l}
+                onResponse={handleResponse}
+                onOpenDetail={setDetailListing}
+                hoveredId={hoveredId}
+                onHover={setHoveredId}
+                cardRef={el => { cardRefs.current[l.id] = el; }}
+              />;
+            })}
       </div>
     )
   );
@@ -449,7 +505,7 @@ export default function Listings() {
             {cardList}
           </div>
         </div>
-        <MapPane listings={mapListings} height="100%" />
+        <MapPane listings={mapListings} height="100%" hoveredId={hoveredId} onMarkerHover={setHoveredId} onMarkerClick={handleMarkerClick} />
       </div>
 
       {modalListing && <NoFeedbackModal listing={modalListing} onSubmit={r => submitResponse(modalListing, 'no', r)} onClose={() => setModalListing(null)} />}
