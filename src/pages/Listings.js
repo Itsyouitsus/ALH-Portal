@@ -19,9 +19,6 @@ const STATUS_CONFIG = {
   not_interested:  { label: 'Not interested',     color: 'var(--text-muted)', bg: 'var(--gold-card)' },
 };
 
-// Module-level geocode cache — persists across tab switches
-const _geocodeCache = new Map();
-
 function getStatusKey(l) {
   const s = (l.status || '').toLowerCase();
   if (s === 'viewing') return 'viewing';
@@ -75,59 +72,43 @@ function MapPane({ listings, height }) {
     if (!mapReady || !mapInstanceRef.current) return;
     const L = window.L;
     const map = mapInstanceRef.current;
+
+    // Clear old markers
     markersRef.current.forEach(m => m.remove());
     markersRef.current = [];
-    // Reset to Amsterdam overview each time listings change
-    mapInstanceRef.current.setView([52.3676, 4.9041], 12);
-    setTimeout(() => { if (mapInstanceRef.current) { mapInstanceRef.current.invalidateSize(); mapInstanceRef.current.invalidateSize(); } }, 200);
+    map.setView([52.3676, 4.9041], 12);
+    setTimeout(() => { map.invalidateSize(); map.invalidateSize(); }, 200);
 
-    const geocodeAndPlace = async (listing) => {
-      try {
-        const cacheKey = listing.address;
-        let lat, lng;
-        if (_geocodeCache.has(cacheKey)) {
-          ({ lat, lng } = _geocodeCache.get(cacheKey));
-        } else {
-          const q = encodeURIComponent(`${listing.address}, Amsterdam, Netherlands`);
-          const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1`);
-          const data = await res.json();
-          if (!data[0]) return;
-          lat = parseFloat(data[0].lat);
-          lng = parseFloat(data[0].lon);
-          _geocodeCache.set(cacheKey, { lat, lng });
-        }
-        const color = markerColor(listing);
-        const statusKey = getStatusKey(listing);
-        const statusCfg = statusKey ? STATUS_CONFIG[statusKey] : null;
-        const icon = L.divIcon({
-          html: `<div style="width:32px;height:32px;background:${color};border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;">
-            <svg style="transform:rotate(45deg)" width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9" fill="rgba(255,255,255,0.4)"/></svg>
-          </div>`,
-          className: '', iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -34],
-        });
-        const popup = L.popup({ maxWidth: 260 }).setContent(`
-          <div style="font-family:system-ui,sans-serif;padding:2px 0;">
-            ${listing.area ? `<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:#c9a96e;margin-bottom:4px;">${listing.area}</div>` : ''}
-            <div style="font-size:14px;font-weight:700;color:#0f0f0d;margin-bottom:6px;line-height:1.3;">${listing.address}</div>
-            <div style="font-size:20px;font-weight:700;color:#0f0f0d;margin-bottom:6px;">€${(listing.price||0).toLocaleString()}<span style="font-size:11px;font-weight:400;color:#888">/mo</span></div>
-            <div style="display:flex;gap:10px;font-size:12px;color:#666;margin-bottom:10px;flex-wrap:wrap;">
-              ${listing.size ? `<span>📐 ${listing.size}</span>` : ''}
-              ${listing.beds ? `<span>🛏 ${listing.beds} bed</span>` : ''}
-              ${listing.furnishing ? `<span>🪑 ${listing.furnishing}</span>` : ''}
-            </div>
-            ${statusCfg ? `<div style="font-size:11px;font-weight:600;color:${statusCfg.color};background:${statusCfg.bg};padding:3px 8px;border-radius:10px;display:inline-block;margin-bottom:8px;">${statusCfg.label}</div><br>` : ''}
-            ${listing.url ? `<a href="${listing.url}" target="_blank" style="display:block;background:#0f0f0d;color:#c9a96e;text-decoration:none;padding:8px 12px;border-radius:7px;font-size:12px;font-weight:600;text-align:center;margin-top:4px;">View listing ↗</a>` : ''}
-          </div>`);
-        const marker = L.marker([lat, lng], { icon }).addTo(map).bindPopup(popup);
-        markersRef.current.push(marker);
-      } catch {}
-    };
+    // Place markers directly from stored coordinates (no geocoding needed)
+    listings.forEach(listing => {
+      if (!listing.lat || !listing.lng) return;
+      const color = markerColor(listing);
+      const statusKey = getStatusKey(listing);
+      const statusCfg = statusKey ? STATUS_CONFIG[statusKey] : null;
 
-    // Geocode in batches of 3, 1 second apart — much faster than serial
-    const BATCH = 3;
-    listings.forEach((l, i) => {
-      const delay = 600 + Math.floor(i / BATCH) * 1100;
-      setTimeout(() => geocodeAndPlace(l), delay);
+      const icon = L.divIcon({
+        html: `<div style="width:32px;height:32px;background:${color};border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;">
+          <svg style="transform:rotate(45deg)" width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9" fill="rgba(255,255,255,0.4)"/></svg>
+        </div>`,
+        className: '', iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -34],
+      });
+
+      const popup = L.popup({ maxWidth: 260 }).setContent(`
+        <div style="font-family:system-ui,sans-serif;padding:2px 0;">
+          ${listing.area ? `<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:#c9a96e;margin-bottom:4px;">${listing.area}</div>` : ''}
+          <div style="font-size:14px;font-weight:700;color:#0f0f0d;margin-bottom:6px;line-height:1.3;">${listing.address}</div>
+          <div style="font-size:20px;font-weight:700;color:#0f0f0d;margin-bottom:6px;">€${(listing.price||0).toLocaleString()}<span style="font-size:11px;font-weight:400;color:#888">/mo</span></div>
+          <div style="display:flex;gap:10px;font-size:12px;color:#666;margin-bottom:10px;flex-wrap:wrap;">
+            ${listing.size ? `<span>📐 ${listing.size}</span>` : ''}
+            ${listing.beds ? `<span>🛏 ${listing.beds} bed</span>` : ''}
+            ${listing.furnishing ? `<span>🪑 ${listing.furnishing}</span>` : ''}
+          </div>
+          ${statusCfg ? `<div style="font-size:11px;font-weight:600;color:${statusCfg.color};background:${statusCfg.bg};padding:3px 8px;border-radius:10px;display:inline-block;margin-bottom:8px;">${statusCfg.label}</div><br>` : ''}
+          ${listing.url ? `<a href="${listing.url}" target="_blank" style="display:block;background:#0f0f0d;color:#c9a96e;text-decoration:none;padding:8px 12px;border-radius:7px;font-size:12px;font-weight:600;text-align:center;margin-top:4px;">View listing ↗</a>` : ''}
+        </div>`);
+
+      const marker = L.marker([listing.lat, listing.lng], { icon }).addTo(map).bindPopup(popup);
+      markersRef.current.push(marker);
     });
   }, [mapReady, listings]);
 
