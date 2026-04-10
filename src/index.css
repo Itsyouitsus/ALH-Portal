@@ -366,3 +366,8 @@ body {
 }
 .mobile-nav-item.active { color: var(--gold); }
 .mobile-nav-item svg { width: 20px; height: 20px; }
+
+/* Responsive utilities */
+@media (min-width: 900px) {
+  .mobile-only { display: none !important; }
+}
