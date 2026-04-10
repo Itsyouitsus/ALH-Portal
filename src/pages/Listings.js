@@ -383,16 +383,26 @@ export default function Listings() {
     return true;
   });
 
+  // Map shows same listings as current tab (all tab = all listings)
+  const mapListings = filtered;
+
   if (loading) return <div className="loading-screen">Loading your listings...</div>;
 
   // ── Stats bar — full width, always above list+map ─────────────────────────
   const statsBar = (
-    <div className="stat-row" style={{ marginBottom: 20 }}>
-      <div className="stat"><div className="stat-label">Properties found</div><div className="stat-val">{listings.length}</div></div>
-      <div className="stat"><div className="stat-label">Awaiting response</div><div className="stat-val" style={{ color: newCount > 0 ? 'var(--gold-dark)' : undefined }}>{newCount}</div></div>
-      <div className="stat"><div className="stat-label">Interested</div><div className="stat-val gold">{yesCount}</div></div>
-      <div className="stat"><div className="stat-label">Viewings</div><div className="stat-val">{viewings}</div></div>
-      <div className="stat"><div className="stat-label">Offers</div><div className="stat-val">{offers}</div></div>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, marginBottom: 20 }}>
+      {[
+        ['Properties found', listings.length, false],
+        ['Awaiting response', newCount, newCount > 0],
+        ['Interested', yesCount, false],
+        ['Viewings', viewings, false],
+        ['Offers', offers, false],
+      ].map(([label, val, highlight]) => (
+        <div key={label} style={{ background: 'var(--card-bg)', borderRadius: 12, padding: '16px 20px', textAlign: 'center' }}>
+          <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)', marginBottom: 6 }}>{label}</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: highlight ? 'var(--gold-dark)' : label === 'Interested' ? 'var(--gold-dark)' : 'var(--near-black)', lineHeight: 1 }}>{val}</div>
+        </div>
+      ))}
     </div>
   );
 
@@ -425,7 +435,7 @@ export default function Listings() {
   );
 
   return (
-    <div className="page" style={{ maxWidth: isDesktop ? 1400 : undefined }}>
+    <div className="page" style={{ maxWidth: isDesktop ? 1600 : undefined, paddingLeft: isDesktop ? 32 : undefined, paddingRight: isDesktop ? 32 : undefined }}>
       <div className="page-header">
         <div><div className="page-title">Your listings</div><div className="page-sub">Properties matched to your search profile</div></div>
       </div>
@@ -433,16 +443,16 @@ export default function Listings() {
       {/* Stats — always full width */}
       {statsBar}
 
-      {isDesktop ? (
-        // Desktop: tabs + list on left, map on right — same height, list scrolls independently
+            {isDesktop ? (
+        // Desktop: full-width stats above, then tabs+list left, map right
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'start' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 240px)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 260px)' }}>
             {tabBar}
             <div style={{ overflowY: 'auto', flex: 1, paddingRight: 6 }}>
               {cardList}
             </div>
           </div>
-          <MapPane listings={listings} height="calc(100vh - 240px)" />
+          <MapPane listings={mapListings} height="calc(100vh - 260px)" />
         </div>
       ) : (
         // Mobile: tabs + list (map is a tab)
