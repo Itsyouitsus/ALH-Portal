@@ -241,7 +241,7 @@ function ListingCard({ listing, onResponse, onOpenDetail, hoveredId, onHover, ca
         background: isHovered ? 'var(--gold-card)' : 'var(--card-bg)',
         borderRadius: 12,
         padding: '11px 16px',
-        scrollMarginTop: 12,,
+        scrollMarginTop: 12,
         borderLeft: `4px solid ${isHovered ? 'var(--gold)' : accentColor}`,
         opacity: isNo && !isHovered ? 0.75 : 1,
         outline: isHovered ? '2px solid var(--gold)' : 'none',
