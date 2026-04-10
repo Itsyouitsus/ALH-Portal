@@ -244,7 +244,7 @@ function ListingCard({ listing, onResponse, onOpenDetail, hoveredId, onHover, ca
         scrollMarginTop: 12,
         borderLeft: `4px solid ${isHovered ? 'var(--gold)' : accentColor}`,
         opacity: isNo && !isHovered ? 0.75 : 1,
-        outline: isHovered ? '2px solid var(--gold)' : 'none',
+
         transform: `translateX(${swipeX * 0.3}px)`,
         transition: swiping ? 'none' : 'all 0.15s ease',
         position: 'relative', overflow: 'hidden',
@@ -254,24 +254,26 @@ function ListingCard({ listing, onResponse, onOpenDetail, hoveredId, onHover, ca
       {swipeX > 20 && <div style={{ position: 'absolute', inset: 0, background: `rgba(45,122,79,${swipeOp * 0.12})`, display: 'flex', alignItems: 'center', paddingLeft: 20, pointerEvents: 'none' }}><span style={{ fontSize: 26, fontWeight: 700, color: 'var(--success)', opacity: swipeOp }}>YES ✓</span></div>}
       {swipeX < -20 && <div style={{ position: 'absolute', inset: 0, background: `rgba(163,45,45,${swipeOp * 0.12})`, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: 20, pointerEvents: 'none' }}><span style={{ fontSize: 26, fontWeight: 700, color: 'var(--danger)', opacity: swipeOp }}>NO ✕</span></div>}
 
-      {/* Row 1: neighbourhood + price */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 2 }}>
-        <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--gold-dark)' }}>
-          {[listing.area, listing.city || 'Amsterdam'].filter(Boolean).join(' · ')}
-        </div>
-        <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 16 }}>
+      {/* Price — absolute top-right so it never affects content height */}
+      <div style={{ position: 'absolute', top: 11, right: 16, textAlign: 'right' }}>
+        <div>
           <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--near-black)', letterSpacing: '-0.01em' }}>€{listing.price?.toLocaleString()}</span>
           <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 2 }}>/mo</span>
-          {listing.serviceCosts > 0 && (
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>+€{listing.serviceCosts?.toLocaleString()} service costs</div>
-          )}
         </div>
+        {listing.serviceCosts > 0 && (
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>+€{listing.serviceCosts?.toLocaleString()} service costs</div>
+        )}
+      </div>
+
+      {/* Row 1: neighbourhood — left only, padded right so text doesn't overlap price */}
+      <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--gold-dark)', marginBottom: 2, paddingRight: 140 }}>
+        {[listing.area, listing.city || 'Amsterdam'].filter(Boolean).join(' · ')}
       </div>
 
       {/* Row 2: address (clickable) */}
       <div
         onClick={() => onOpenDetail(listing)}
-        style={{ fontSize: 14, fontWeight: 700, color: 'var(--near-black)', lineHeight: 1.3, marginBottom: 7, cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'var(--gold)', textUnderlineOffset: 3 }}
+        style={{ fontSize: 14, fontWeight: 700, color: 'var(--near-black)', lineHeight: 1.3, marginBottom: 7, cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'var(--gold)', textUnderlineOffset: 3, paddingRight: 140 }}
       >
         {listing.address}
       </div>
