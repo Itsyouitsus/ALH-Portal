@@ -32,19 +32,18 @@ function getStatusKey(l) {
 }
 
 function markerColor(l) {
-  if (l.clientResponse === 'yes' || getStatusKey(l)) return '#22c55e'; // green
-  if (l.clientResponse === 'no') return '#ef4444';                      // red
-  return '#eab308';                                                     // yellow (pending)
+  if (l.clientResponse === 'yes' || getStatusKey(l)) return '#22c55e';
+  if (l.clientResponse === 'no') return '#ef4444';
+  return '#eab308';
 }
 
-// ── Map component ─────────────────────────────────────────────────────────────
-function MapPane({ listings, onSelectListing }) {
+// ── Map pane ──────────────────────────────────────────────────────────────────
+function MapPane({ listings, height }) {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersRef = useRef([]);
   const [mapReady, setMapReady] = useState(false);
 
-  // Load Leaflet once
   useEffect(() => {
     if (window._leafletLoaded) { setMapReady(true); return; }
     const link = document.createElement('link');
@@ -57,24 +56,20 @@ function MapPane({ listings, onSelectListing }) {
     document.head.appendChild(script);
   }, []);
 
-  // Init map
   useEffect(() => {
     if (!mapReady || !mapRef.current || mapInstanceRef.current) return;
     const L = window.L;
-    const map = L.map(mapRef.current, { zoomControl: true }).setView([52.3676, 4.9041], 12);
+    const map = L.map(mapRef.current).setView([52.3676, 4.9041], 12);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
       attribution: '© OpenStreetMap © CARTO', maxZoom: 19,
     }).addTo(map);
     mapInstanceRef.current = map;
   }, [mapReady]);
 
-  // Add/update markers when listings change
   useEffect(() => {
     if (!mapReady || !mapInstanceRef.current) return;
     const L = window.L;
     const map = mapInstanceRef.current;
-
-    // Clear old markers
     markersRef.current.forEach(m => m.remove());
     markersRef.current = [];
 
@@ -84,34 +79,17 @@ function MapPane({ listings, onSelectListing }) {
         const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1`);
         const data = await res.json();
         if (!data[0]) return;
-        const lat = parseFloat(data[0].lat);
-        const lng = parseFloat(data[0].lon);
+        const lat = parseFloat(data[0].lat), lng = parseFloat(data[0].lon);
         const color = markerColor(listing);
         const statusKey = getStatusKey(listing);
         const statusCfg = statusKey ? STATUS_CONFIG[statusKey] : null;
-
         const icon = L.divIcon({
-          html: `<div style="
-            width:32px;height:32px;
-            background:${color};
-            border-radius:50% 50% 50% 0;
-            transform:rotate(-45deg);
-            border:2.5px solid white;
-            box-shadow:0 2px 8px rgba(0,0,0,0.25);
-            display:flex;align-items:center;justify-content:center;
-          ">
-            <svg style="transform:rotate(45deg)" width="14" height="14" viewBox="0 0 24 24" fill="white">
-              <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/>
-              <path d="M9 21V12h6v9" fill="rgba(255,255,255,0.5)"/>
-            </svg>
+          html: `<div style="width:32px;height:32px;background:${color};border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;">
+            <svg style="transform:rotate(45deg)" width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9" fill="rgba(255,255,255,0.4)"/></svg>
           </div>`,
-          className: '',
-          iconSize: [32, 32],
-          iconAnchor: [16, 32],
-          popupAnchor: [0, -34],
+          className: '', iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -34],
         });
-
-        const popup = L.popup({ maxWidth: 260, className: 'alh-popup' }).setContent(`
+        const popup = L.popup({ maxWidth: 260 }).setContent(`
           <div style="font-family:system-ui,sans-serif;padding:2px 0;">
             ${listing.area ? `<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:#c9a96e;margin-bottom:4px;">${listing.area}</div>` : ''}
             <div style="font-size:14px;font-weight:700;color:#0f0f0d;margin-bottom:6px;line-height:1.3;">${listing.address}</div>
@@ -123,31 +101,22 @@ function MapPane({ listings, onSelectListing }) {
             </div>
             ${statusCfg ? `<div style="font-size:11px;font-weight:600;color:${statusCfg.color};background:${statusCfg.bg};padding:3px 8px;border-radius:10px;display:inline-block;margin-bottom:8px;">${statusCfg.label}</div><br>` : ''}
             ${listing.url ? `<a href="${listing.url}" target="_blank" style="display:block;background:#0f0f0d;color:#c9a96e;text-decoration:none;padding:8px 12px;border-radius:7px;font-size:12px;font-weight:600;text-align:center;margin-top:4px;">View listing ↗</a>` : ''}
-          </div>
-        `);
-
+          </div>`);
         const marker = L.marker([lat, lng], { icon }).addTo(map).bindPopup(popup);
         markersRef.current.push(marker);
       } catch {}
     };
 
     let delay = 0;
-    listings.forEach(l => {
-      setTimeout(() => geocodeAndPlace(l), delay);
-      delay += 350;
-    });
+    listings.forEach(l => { setTimeout(() => geocodeAndPlace(l), delay); delay += 350; });
   }, [mapReady, listings]);
 
   return (
-    <div style={{ position: 'sticky', top: 20, height: 'calc(100vh - 80px)', borderRadius: 14, overflow: 'hidden', border: '1px solid var(--gold-mid)' }}>
-      {!mapReady && (
-        <div style={{ height: '100%', background: 'var(--card-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
-          Loading map...
-        </div>
-      )}
+    <div style={{ position: 'sticky', top: 20, borderRadius: 14, overflow: 'hidden', border: '1px solid var(--gold-mid)', height: height || 'calc(100vh - 160px)' }}>
+      {!mapReady && <div style={{ height: '100%', background: 'var(--card-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 14 }}>Loading map...</div>}
       <div ref={mapRef} style={{ height: '100%', display: mapReady ? 'block' : 'none' }} />
       {mapReady && (
-        <div style={{ position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 999, background: 'white', borderRadius: 20, padding: '4px 12px', fontSize: 11, color: '#555', display: 'flex', gap: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.12)', whiteSpace: 'nowrap' }}>
+        <div style={{ position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 999, background: 'white', borderRadius: 20, padding: '4px 14px', fontSize: 11, color: '#555', display: 'flex', gap: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.12)', whiteSpace: 'nowrap' }}>
           <span><span style={{ color: '#22c55e', fontWeight: 700 }}>●</span> Interested</span>
           <span><span style={{ color: '#eab308', fontWeight: 700 }}>●</span> New</span>
           <span><span style={{ color: '#ef4444', fontWeight: 700 }}>●</span> Passed</span>
@@ -185,7 +154,7 @@ function ListingDetailModal({ listing, onClose }) {
   );
 }
 
-// ── Why not modal — centered ──────────────────────────────────────────────────
+// ── Why not modal ─────────────────────────────────────────────────────────────
 function NoFeedbackModal({ listing, onSubmit, onClose }) {
   const [selected, setSelected] = useState([]);
   const [other, setOther] = useState('');
@@ -212,12 +181,13 @@ function NoFeedbackModal({ listing, onSubmit, onClose }) {
   );
 }
 
-function Spec({ icon, value }) {
-  if (!value) return null;
-  return <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, color: 'var(--near-black)' }}><span style={{ fontSize: 14 }}>{icon}</span><span>{value}</span></div>;
-}
-
-// ── Listing card ──────────────────────────────────────────────────────────────
+// ── Listing card — matches screenshot exactly ─────────────────────────────────
+// Layout: [neighbourhood · city] [price top-right]
+//         [bold address]
+//         [📐 size  ↔ beds  🪑 furnishing]   [✓ ✕ buttons]
+//         [📅 available from]
+//         [status badge if any]
+//         [no reasons if passed]
 function ListingCard({ listing, onResponse, onOpenDetail }) {
   const startX = useRef(null);
   const [swipeX, setSwipeX] = useState(0);
@@ -229,49 +199,123 @@ function ListingCard({ listing, onResponse, onOpenDetail }) {
   const isNo = listing.clientResponse === 'no' && !statusKey;
   const swipeOp = Math.min(Math.abs(swipeX) / 80, 1);
 
+  const accentColor = statusKey === 'offer_accepted' ? '#1a7a3c' : isYes ? 'var(--gold)' : isNo ? 'var(--gold-mid)' : 'transparent';
+
   return (
     <div
       onTouchStart={e => { startX.current = e.touches[0].clientX; setSwiping(true); }}
       onTouchMove={e => { if (!startX.current) return; setSwipeX(e.touches[0].clientX - startX.current); }}
       onTouchEnd={() => { if (swipeX > 60) onResponse(listing, 'yes'); else if (swipeX < -60) onResponse(listing, 'no'); setSwipeX(0); setSwiping(false); startX.current = null; }}
-      style={{ background: 'var(--card-bg)', borderRadius: 14, padding: '16px 18px', borderLeft: `4px solid ${statusKey === 'offer_accepted' ? '#1a7a3c' : isYes ? 'var(--gold)' : isNo ? 'var(--gold-mid)' : 'transparent'}`, border: `1px solid ${isYes ? 'rgba(201,169,110,0.2)' : isNo ? 'var(--gold-mid)' : 'transparent'}`, borderLeft: `4px solid ${statusKey === 'offer_accepted' ? '#1a7a3c' : isYes ? 'var(--gold)' : isNo ? 'var(--gold-mid)' : 'transparent'}`, opacity: isNo ? 0.72 : 1, transform: `translateX(${swipeX * 0.3}px)`, transition: swiping ? 'none' : 'transform 0.3s ease', position: 'relative', overflow: 'hidden' }}
+      style={{
+        background: 'var(--card-bg)',
+        borderRadius: 12,
+        padding: '14px 18px',
+        borderLeft: `4px solid ${accentColor}`,
+        opacity: isNo ? 0.75 : 1,
+        transform: `translateX(${swipeX * 0.3}px)`,
+        transition: swiping ? 'none' : 'transform 0.3s ease',
+        position: 'relative', overflow: 'hidden',
+      }}
     >
+      {/* Swipe overlays */}
       {swipeX > 20 && <div style={{ position: 'absolute', inset: 0, background: `rgba(45,122,79,${swipeOp * 0.12})`, display: 'flex', alignItems: 'center', paddingLeft: 20, pointerEvents: 'none' }}><span style={{ fontSize: 26, fontWeight: 700, color: 'var(--success)', opacity: swipeOp }}>YES ✓</span></div>}
       {swipeX < -20 && <div style={{ position: 'absolute', inset: 0, background: `rgba(163,45,45,${swipeOp * 0.12})`, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: 20, pointerEvents: 'none' }}><span style={{ fontSize: 26, fontWeight: 700, color: 'var(--danger)', opacity: swipeOp }}>NO ✕</span></div>}
 
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          {listing.area && <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--gold-dark)', marginBottom: 3 }}>{listing.area} · {listing.city || 'Amsterdam'}</div>}
-          <div onClick={() => onOpenDetail(listing)} style={{ fontSize: 14, fontWeight: 700, color: 'var(--near-black)', lineHeight: 1.3, marginBottom: 7, cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'var(--gold)', textUnderlineOffset: 3 }}>{listing.address}</div>
-          <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 6 }}>
-            <Spec icon="📐" value={listing.size} />
-            <Spec icon="🛏" value={listing.beds ? `${listing.beds} bed${listing.beds > 1 ? 's' : ''}` : null} />
-            <Spec icon="🪑" value={listing.furnishing} />
-            <Spec icon="📅" value={listing.availableFrom} />
-          </div>
-          {listing.serviceCosts > 0 && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>+€{listing.serviceCosts?.toLocaleString()} service costs</div>}
-          {statusCfg && <div style={{ display: 'inline-flex', marginTop: 7, fontSize: 11, fontWeight: 600, color: statusCfg.color, background: statusCfg.bg, padding: '3px 9px', borderRadius: 20 }}>{statusCfg.label}</div>}
-          {isNo && listing.noReasons?.length > 0 && <div style={{ marginTop: 5, display: 'flex', flexWrap: 'wrap', gap: 4 }}>{listing.noReasons.map(r => <span key={r} style={{ fontSize: 11, padding: '2px 7px', borderRadius: 12, background: 'var(--gold-card)', color: 'var(--text-muted)' }}>{r}</span>)}</div>}
-          {listing.notes && <div style={{ marginTop: 7, fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic', borderLeft: '2px solid var(--gold-mid)', paddingLeft: 8 }}>{listing.notes}</div>}
+      {/* Row 1: neighbourhood + price */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 2 }}>
+        <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--gold-dark)' }}>
+          {[listing.area, listing.city || 'Amsterdam'].filter(Boolean).join(' · ')}
         </div>
-        <div style={{ textAlign: 'right', flexShrink: 0 }}>
-          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--near-black)', lineHeight: 1 }}>€{listing.price?.toLocaleString()}</div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>/mo</div>
-          {!responded && !statusKey && (
-            <div style={{ display: 'flex', gap: 5, justifyContent: 'flex-end' }}>
-              <button onClick={() => onResponse(listing, 'yes')} style={{ width: 32, height: 32, borderRadius: 8, border: '1.5px solid var(--gold-mid)', background: 'var(--gold-bg)', cursor: 'pointer', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✓</button>
-              <button onClick={() => onResponse(listing, 'no')} style={{ width: 32, height: 32, borderRadius: 8, border: '1.5px solid var(--gold-mid)', background: 'var(--gold-bg)', cursor: 'pointer', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
-            </div>
-          )}
-          {responded && !statusKey && <button onClick={() => onResponse(listing, 'toggle')} style={{ fontSize: 11, color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>Change</button>}
+        <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 16 }}>
+          <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--near-black)', letterSpacing: '-0.01em' }}>€{listing.price?.toLocaleString()}</span>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 2 }}>/mo</span>
         </div>
       </div>
 
+      {/* Row 2: address (clickable) */}
+      <div
+        onClick={() => onOpenDetail(listing)}
+        style={{ fontSize: 15, fontWeight: 700, color: 'var(--near-black)', lineHeight: 1.3, marginBottom: 10, cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'var(--gold)', textUnderlineOffset: 3 }}
+      >
+        {listing.address}
+      </div>
+
+      {/* Row 3: specs + action buttons */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
+        {/* Specs — same line, icon + text, matching screenshot */}
+        <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'center' }}>
+          {listing.size && (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: 'var(--near-black)' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+              {listing.size}
+            </span>
+          )}
+          {listing.beds && (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: 'var(--near-black)' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12v6M21 12v6M3 18h18M3 12a3 3 0 013-3h12a3 3 0 013 3M6 9V7a2 2 0 012-2h8a2 2 0 012 2v2"/></svg>
+              {listing.beds} {listing.beds === 1 ? 'bed' : 'beds'}
+            </span>
+          )}
+          {listing.furnishing && (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: 'var(--near-black)' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="13" rx="2"/><path d="M2 12h20M6 7V5a2 2 0 012-2h8a2 2 0 012 2v2"/></svg>
+              {listing.furnishing}
+            </span>
+          )}
+        </div>
+
+        {/* Action buttons — right side, same row as specs */}
+        {!responded && !statusKey && (
+          <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+            <button
+              onClick={() => onResponse(listing, 'yes')}
+              style={{ width: 34, height: 34, borderRadius: 8, border: '1.5px solid var(--gold-mid)', background: 'var(--gold-bg)', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'inherit', transition: 'all 0.12s' }}
+            >✓</button>
+            <button
+              onClick={() => onResponse(listing, 'no')}
+              style={{ width: 34, height: 34, borderRadius: 8, border: '1.5px solid var(--gold-mid)', background: 'var(--gold-bg)', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'inherit', transition: 'all 0.12s' }}
+            >✕</button>
+          </div>
+        )}
+        {responded && !statusKey && (
+          <button onClick={() => onResponse(listing, 'toggle')} style={{ fontSize: 11, color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', flexShrink: 0 }}>Change</button>
+        )}
+      </div>
+
+      {/* Row 4: availability */}
+      {listing.availableFrom && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: 'var(--near-black)', marginBottom: 6 }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          {listing.availableFrom}
+          {listing.serviceCosts > 0 && <span style={{ marginLeft: 12, fontSize: 12, color: 'var(--text-muted)' }}>+€{listing.serviceCosts?.toLocaleString()} service costs</span>}
+        </div>
+      )}
+
+      {/* Status badge */}
+      {statusCfg && (
+        <div style={{ display: 'inline-flex', marginTop: 4, fontSize: 11, fontWeight: 600, color: statusCfg.color, background: statusCfg.bg, padding: '3px 10px', borderRadius: 20 }}>
+          {statusCfg.label}
+        </div>
+      )}
+
+      {/* No reasons */}
+      {isNo && listing.noReasons?.length > 0 && (
+        <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+          {listing.noReasons.map(r => <span key={r} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 12, background: 'var(--gold-card)', color: 'var(--text-muted)' }}>{r}</span>)}
+        </div>
+      )}
+
+      {/* Agent notes */}
+      {listing.notes && (
+        <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic', borderLeft: '2px solid var(--gold-mid)', paddingLeft: 8 }}>{listing.notes}</div>
+      )}
+
+      {/* Mobile action buttons */}
       {!responded && !statusKey && (
         <>
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-            <button onClick={() => onResponse(listing, 'yes')} style={{ flex: 1, padding: 10, borderRadius: 10, border: '1.5px solid var(--success)', background: 'var(--success-bg)', color: 'var(--success)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}>✓ Yes, want to view</button>
-            <button onClick={() => onResponse(listing, 'no')} style={{ flex: 1, padding: 10, borderRadius: 10, border: '1.5px solid var(--gold-mid)', background: 'var(--gold-bg)', color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}>✕ Not for me</button>
+            <button onClick={() => onResponse(listing, 'yes')} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1.5px solid var(--success)', background: 'var(--success-bg)', color: 'var(--success)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}>✓ Yes, want to view</button>
+            <button onClick={() => onResponse(listing, 'no')} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1.5px solid var(--gold-mid)', background: 'var(--gold-bg)', color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}>✕ Not for me</button>
           </div>
           <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-light)', marginTop: 6 }}>Swipe right for yes · left for no</div>
         </>
@@ -322,23 +366,15 @@ export default function Listings() {
   const yesCount  = listings.filter(l => l.clientResponse === 'yes' || getStatusKey(l)).length;
   const noCount   = listings.filter(l => l.clientResponse === 'no' && !getStatusKey(l)).length;
   const viewings  = listings.filter(l => l.status === 'viewing').length;
+  const offers    = listings.filter(l => ['offer_accepted','offer_rejected','offer_cancelled'].includes(getStatusKey(l))).length;
 
-  // On desktop: always show map alongside list. Tab controls which listings show in the list.
-  // On mobile: map is a separate tab.
-  const TABS = isDesktop
-    ? [
-        { key: 'new',  label: 'New',        count: newCount,       dot: newCount > 0 },
-        { key: 'yes',  label: 'Interested', count: yesCount },
-        { key: 'no',   label: 'Passed',     count: noCount },
-        { key: 'all',  label: 'All',        count: listings.length },
-      ]
-    : [
-        { key: 'new',  label: 'New',        count: newCount,       dot: newCount > 0 },
-        { key: 'yes',  label: 'Interested', count: yesCount },
-        { key: 'no',   label: 'Passed',     count: noCount },
-        { key: 'all',  label: 'All',        count: listings.length },
-        { key: 'map',  label: '🗺 Map' },
-      ];
+  const TABS = [
+    { key: 'new',  label: 'New',        count: newCount,       dot: newCount > 0 },
+    { key: 'yes',  label: 'Interested', count: yesCount },
+    { key: 'no',   label: 'Passed',     count: noCount },
+    { key: 'all',  label: 'All',        count: listings.length },
+    ...(!isDesktop ? [{ key: 'map', label: '🗺 Map' }] : []),
+  ];
 
   const filtered = listings.filter(l => {
     if (tab === 'new') return !l.clientResponse && !getStatusKey(l);
@@ -349,60 +385,68 @@ export default function Listings() {
 
   if (loading) return <div className="loading-screen">Loading your listings...</div>;
 
-  const listPanel = (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-      {/* Stats */}
-      <div className="stat-row" style={{ marginBottom: 16 }}>
-        <div className="stat"><div className="stat-label">Found</div><div className="stat-val">{listings.length}</div></div>
-        <div className="stat"><div className="stat-label">Awaiting</div><div className="stat-val" style={{ color: newCount > 0 ? 'var(--gold-dark)' : undefined }}>{newCount}</div></div>
-        <div className="stat"><div className="stat-label">Interested</div><div className="stat-val gold">{yesCount}</div></div>
-        <div className="stat"><div className="stat-label">Viewings</div><div className="stat-val">{viewings}</div></div>
-      </div>
-
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 16, background: 'var(--card-bg)', borderRadius: 10, padding: 4, overflowX: 'auto' }}>
-        {TABS.map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)} style={{ flex: t.key === 'map' ? '0 0 auto' : 1, padding: '8px 10px', borderRadius: 7, fontSize: 12, fontWeight: 500, cursor: 'pointer', border: 'none', fontFamily: "'DM Sans',sans-serif", background: tab === t.key ? 'var(--near-black)' : 'transparent', color: tab === t.key ? 'var(--gold-bg)' : 'var(--text-muted)', transition: 'all 0.15s', whiteSpace: 'nowrap', position: 'relative' }}>
-            {t.label}{t.count != null ? ` (${t.count})` : ''}
-            {t.dot && tab !== t.key && <span style={{ position: 'absolute', top: 6, right: 6, width: 5, height: 5, borderRadius: '50%', background: 'var(--gold)' }} />}
-          </button>
-        ))}
-      </div>
-
-      {/* Cards */}
-      {tab !== 'map' && (
-        listings.length === 0 ? (
-          <div className="card" style={{ textAlign: 'center', padding: '48px 24px', color: 'var(--text-muted)' }}>
-            <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, marginBottom: 10 }}>No listings yet</div>
-            <div style={{ fontSize: 14 }}>Your agent is actively searching. You'll receive an email as soon as new properties are shared with you.</div>
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="card" style={{ textAlign: 'center', padding: 32, color: 'var(--text-muted)', fontSize: 14 }}>No listings in this category yet.</div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, overflowY: isDesktop ? 'auto' : 'visible', maxHeight: isDesktop ? 'calc(100vh - 280px)' : 'none', paddingRight: isDesktop ? 4 : 0 }}>
-            {filtered.map(l => <ListingCard key={l.id} listing={l} onResponse={handleResponse} onOpenDetail={setDetailListing} />)}
-          </div>
-        )
-      )}
-      {tab === 'map' && !isDesktop && <MapPane listings={listings} />}
+  // ── Stats bar — full width, always above list+map ─────────────────────────
+  const statsBar = (
+    <div className="stat-row" style={{ marginBottom: 20 }}>
+      <div className="stat"><div className="stat-label">Properties found</div><div className="stat-val">{listings.length}</div></div>
+      <div className="stat"><div className="stat-label">Awaiting response</div><div className="stat-val" style={{ color: newCount > 0 ? 'var(--gold-dark)' : undefined }}>{newCount}</div></div>
+      <div className="stat"><div className="stat-label">Interested</div><div className="stat-val gold">{yesCount}</div></div>
+      <div className="stat"><div className="stat-label">Viewings</div><div className="stat-val">{viewings}</div></div>
+      <div className="stat"><div className="stat-label">Offers</div><div className="stat-val">{offers}</div></div>
     </div>
   );
 
+  // ── Tab bar ───────────────────────────────────────────────────────────────
+  const tabBar = (
+    <div style={{ display: 'flex', gap: 4, marginBottom: 16, background: 'var(--card-bg)', borderRadius: 10, padding: 4 }}>
+      {TABS.map(t => (
+        <button key={t.key} onClick={() => setTab(t.key)} style={{ flex: t.key === 'map' ? '0 0 auto' : 1, padding: '8px 12px', borderRadius: 7, fontSize: 13, fontWeight: 500, cursor: 'pointer', border: 'none', fontFamily: "'DM Sans',sans-serif", background: tab === t.key ? 'var(--near-black)' : 'transparent', color: tab === t.key ? 'var(--gold-bg)' : 'var(--text-muted)', transition: 'all 0.15s', whiteSpace: 'nowrap', position: 'relative' }}>
+          {t.label}{t.count != null ? ` (${t.count})` : ''}
+          {t.dot && tab !== t.key && <span style={{ position: 'absolute', top: 6, right: 6, width: 5, height: 5, borderRadius: '50%', background: 'var(--gold)' }} />}
+        </button>
+      ))}
+    </div>
+  );
+
+  // ── Card list ─────────────────────────────────────────────────────────────
+  const cardList = tab === 'map' ? <MapPane listings={listings} height="calc(100vh - 320px)" /> : (
+    listings.length === 0 ? (
+      <div className="card" style={{ textAlign: 'center', padding: '48px 24px', color: 'var(--text-muted)' }}>
+        <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, marginBottom: 10 }}>No listings yet</div>
+        <div style={{ fontSize: 14 }}>Your agent is actively searching. You'll receive an email as soon as new properties are shared with you.</div>
+      </div>
+    ) : filtered.length === 0 ? (
+      <div className="card" style={{ textAlign: 'center', padding: 32, color: 'var(--text-muted)', fontSize: 14 }}>No listings in this category yet.</div>
+    ) : (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {filtered.map(l => <ListingCard key={l.id} listing={l} onResponse={handleResponse} onOpenDetail={setDetailListing} />)}
+      </div>
+    )
+  );
+
   return (
-    <div className="page">
+    <div className="page" style={{ maxWidth: isDesktop ? 1400 : undefined }}>
       <div className="page-header">
         <div><div className="page-title">Your listings</div><div className="page-sub">Properties matched to your search profile</div></div>
       </div>
 
+      {/* Stats — always full width */}
+      {statsBar}
+
       {isDesktop ? (
-        // Desktop: list left, map right (sticky)
+        // Desktop: tabs + list on left, map on right (map starts under stats)
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'start' }}>
-          <div>{listPanel}</div>
+          <div>
+            {tabBar}
+            <div style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 280px)', paddingRight: 4 }}>
+              {cardList}
+            </div>
+          </div>
           <MapPane listings={listings} />
         </div>
       ) : (
-        // Mobile: tabs only
-        listPanel
+        // Mobile: tabs + list (map is a tab)
+        <>{tabBar}{cardList}</>
       )}
 
       {modalListing && <NoFeedbackModal listing={modalListing} onSubmit={r => submitResponse(modalListing, 'no', r)} onClose={() => setModalListing(null)} />}
