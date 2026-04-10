@@ -209,7 +209,7 @@ function ListingCard({ listing, onResponse, onOpenDetail }) {
       style={{
         background: 'var(--card-bg)',
         borderRadius: 12,
-        padding: '14px 18px',
+        padding: '11px 16px',
         borderLeft: `4px solid ${accentColor}`,
         opacity: isNo ? 0.75 : 1,
         transform: `translateX(${swipeX * 0.3}px)`,
@@ -235,7 +235,7 @@ function ListingCard({ listing, onResponse, onOpenDetail }) {
       {/* Row 2: address (clickable) */}
       <div
         onClick={() => onOpenDetail(listing)}
-        style={{ fontSize: 15, fontWeight: 700, color: 'var(--near-black)', lineHeight: 1.3, marginBottom: 10, cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'var(--gold)', textUnderlineOffset: 3 }}
+        style={{ fontSize: 14, fontWeight: 700, color: 'var(--near-black)', lineHeight: 1.3, marginBottom: 7, cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'var(--gold)', textUnderlineOffset: 3 }}
       >
         {listing.address}
       </div>
@@ -390,7 +390,7 @@ export default function Listings() {
 
   // ── Stats bar — full width, always above list+map ─────────────────────────
   const statsBar = (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, marginBottom: 20 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginBottom: 14 }}>
       {[
         ['Properties found', listings.length, false],
         ['Awaiting response', newCount, newCount > 0],
@@ -398,9 +398,9 @@ export default function Listings() {
         ['Viewings', viewings, false],
         ['Offers', offers, false],
       ].map(([label, val, highlight]) => (
-        <div key={label} style={{ background: 'var(--card-bg)', borderRadius: 12, padding: '16px 20px', textAlign: 'center' }}>
-          <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)', marginBottom: 6 }}>{label}</div>
-          <div style={{ fontSize: 28, fontWeight: 700, color: highlight ? 'var(--gold-dark)' : label === 'Interested' ? 'var(--gold-dark)' : 'var(--near-black)', lineHeight: 1 }}>{val}</div>
+        <div key={label} style={{ background: 'var(--card-bg)', borderRadius: 10, padding: '10px 16px', textAlign: 'center' }}>
+          <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)', marginBottom: 3 }}>{label}</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: highlight ? 'var(--gold-dark)' : label === 'Interested' ? 'var(--gold-dark)' : 'var(--near-black)', lineHeight: 1 }}>{val}</div>
         </div>
       ))}
     </div>
@@ -408,9 +408,9 @@ export default function Listings() {
 
   // ── Tab bar ───────────────────────────────────────────────────────────────
   const tabBar = (
-    <div style={{ display: 'flex', gap: 4, marginBottom: 16, background: 'var(--card-bg)', borderRadius: 10, padding: 4 }}>
+    <div style={{ display: 'flex', gap: 3, marginBottom: 10, background: 'var(--card-bg)', borderRadius: 9, padding: 3 }}>
       {TABS.map(t => (
-        <button key={t.key} onClick={() => setTab(t.key)} style={{ flex: t.key === 'map' ? '0 0 auto' : 1, padding: '8px 12px', borderRadius: 7, fontSize: 13, fontWeight: 500, cursor: 'pointer', border: 'none', fontFamily: "'DM Sans',sans-serif", background: tab === t.key ? 'var(--near-black)' : 'transparent', color: tab === t.key ? 'var(--gold-bg)' : 'var(--text-muted)', transition: 'all 0.15s', whiteSpace: 'nowrap', position: 'relative' }}>
+        <button key={t.key} onClick={() => setTab(t.key)} style={{ flex: t.key === 'map' ? '0 0 auto' : 1, padding: '6px 10px', borderRadius: 6, fontSize: 12, fontWeight: 500, cursor: 'pointer', border: 'none', fontFamily: "'DM Sans',sans-serif", background: tab === t.key ? 'var(--near-black)' : 'transparent', color: tab === t.key ? 'var(--gold-bg)' : 'var(--text-muted)', transition: 'all 0.15s', whiteSpace: 'nowrap', position: 'relative' }}>
           {t.label}{t.count != null ? ` (${t.count})` : ''}
           {t.dot && tab !== t.key && <span style={{ position: 'absolute', top: 6, right: 6, width: 5, height: 5, borderRadius: '50%', background: 'var(--gold)' }} />}
         </button>
@@ -435,24 +435,24 @@ export default function Listings() {
   );
 
   return (
-    <div className="page" style={{ maxWidth: isDesktop ? 1600 : undefined, paddingLeft: isDesktop ? 32 : undefined, paddingRight: isDesktop ? 32 : undefined }}>
-      <div className="page-header">
-        <div><div className="page-title">Your listings</div><div className="page-sub">Properties matched to your search profile</div></div>
+    <div className="page" style={{ maxWidth: isDesktop ? 1800 : undefined, paddingLeft: isDesktop ? 40 : undefined, paddingRight: isDesktop ? 40 : undefined, paddingTop: isDesktop ? 16 : undefined }}>
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'Cormorant Garamond', serif", color: 'var(--near-black)', lineHeight: 1 }}>Your listings</div>
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>Properties matched to your search profile</div>
       </div>
 
-      {/* Stats — always full width */}
       {statsBar}
 
             {isDesktop ? (
         // Desktop: full-width stats above, then tabs+list left, map right
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'start' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 260px)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 226px)' }}>
             {tabBar}
             <div style={{ overflowY: 'auto', flex: 1, paddingRight: 6 }}>
               {cardList}
             </div>
           </div>
-          <MapPane listings={mapListings} height="calc(100vh - 260px)" />
+          <MapPane listings={mapListings} height="calc(100vh - 226px)" />
         </div>
       ) : (
         // Mobile: tabs + list (map is a tab)
