@@ -64,6 +64,8 @@ function MapPane({ listings, height }) {
       attribution: '© OpenStreetMap © CARTO', maxZoom: 19,
     }).addTo(map);
     mapInstanceRef.current = map;
+    // Force map to recalculate its size after flex layout resolves
+    setTimeout(() => map.invalidateSize(), 100);
   }, [mapReady]);
 
   useEffect(() => {
@@ -74,6 +76,7 @@ function MapPane({ listings, height }) {
     markersRef.current = [];
     // Reset to Amsterdam overview each time listings change
     mapInstanceRef.current.setView([52.3676, 4.9041], 12);
+    setTimeout(() => mapInstanceRef.current.invalidateSize(), 50);
 
     const geocodeAndPlace = async (listing) => {
       try {
@@ -116,7 +119,7 @@ function MapPane({ listings, height }) {
   return (
     <div style={{ borderRadius: 14, overflow: 'hidden', border: '1px solid var(--gold-mid)', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', position: 'relative' }}>
       {!mapReady && <div style={{ flex: 1, background: 'var(--card-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 14 }}>Loading map...</div>}
-      <div ref={mapRef} style={{ flex: 1, minHeight: 0, display: mapReady ? 'block' : 'none' }} />
+      <div ref={mapRef} style={{ flex: 1, minHeight: 0, height: '100%', display: mapReady ? 'block' : 'none' }} />
       {mapReady && (
         <div style={{ position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 999, background: 'white', borderRadius: 20, padding: '4px 14px', fontSize: 11, color: '#555', display: 'flex', gap: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.12)', whiteSpace: 'nowrap' }}>
           <span><span style={{ color: '#22c55e', fontWeight: 700 }}>●</span> Interested</span>
