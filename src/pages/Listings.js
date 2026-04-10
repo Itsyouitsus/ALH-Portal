@@ -112,9 +112,12 @@ function MapPane({ listings, height }) {
       } catch {}
     };
 
-    // Wait for map to be fully sized before placing markers
-    let delay = 600;
-    listings.forEach(l => { setTimeout(() => geocodeAndPlace(l), delay); delay += 400; });
+    // Geocode in batches of 3, 1 second apart — much faster than serial
+    const BATCH = 3;
+    listings.forEach((l, i) => {
+      const delay = 600 + Math.floor(i / BATCH) * 1100;
+      setTimeout(() => geocodeAndPlace(l), delay);
+    });
   }, [mapReady, listings]);
 
   return (
@@ -444,7 +447,7 @@ export default function Listings() {
   );
 
   return (
-    <div className="page" style={{ maxWidth: isDesktop ? 1800 : undefined, paddingLeft: isDesktop ? 40 : undefined, paddingRight: isDesktop ? 40 : undefined, paddingTop: isDesktop ? 16 : undefined, overflow: isDesktop ? 'hidden' : undefined, height: isDesktop ? '100vh' : undefined, display: isDesktop ? 'flex' : undefined, flexDirection: isDesktop ? 'column' : undefined, boxSizing: isDesktop ? 'border-box' : undefined, paddingBottom: isDesktop ? 16 : undefined }}>
+    <div className="page" style={{ maxWidth: isDesktop ? 1800 : undefined, paddingLeft: isDesktop ? 40 : undefined, paddingRight: isDesktop ? 40 : undefined, paddingTop: isDesktop ? 16 : undefined, overflow: isDesktop ? 'hidden' : undefined, height: isDesktop ? 'calc(100vh - 56px)' : undefined, display: isDesktop ? 'flex' : undefined, flexDirection: isDesktop ? 'column' : undefined, boxSizing: isDesktop ? 'border-box' : undefined, padding: isDesktop ? '16px 40px' : undefined }}>
 
 
       {statsBar}
