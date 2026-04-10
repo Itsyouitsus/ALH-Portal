@@ -6,6 +6,21 @@ import { collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc,
 
 const WORKER_URL = 'https://alh-email-worker.home-f67.workers.dev/';
 
+// Geocode an address via the Worker (server-side, no CORS issues)
+async function geocodeAddress(address) {
+  try {
+    const res = await fetch(WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'geocode', address }),
+    });
+    const data = await res.json();
+    return { lat: data.lat || null, lng: data.lng || null };
+  } catch {
+    return { lat: null, lng: null };
+  }
+}
+
 // Generate magic link without sending email — returns the raw URL
 async function generateMagicLink(email) {
   const res = await fetch(WORKER_URL, {
@@ -187,8 +202,10 @@ function NewListingModal({ clients, onClose, onCreated }) {
     if (!form.address || !form.price || selectedClients.length === 0) return;
     setSaving(true);
     try {
+      // Geocode the address once (shared across all selected clients)
+      const { lat, lng } = await geocodeAddress(form.address + (form.city ? ', ' + form.city : ''));
       for (const clientId of selectedClients) {
-        await addDoc(collection(db,'listings'), { ...form,price:parseInt(form.price),serviceCosts:parseInt(form.serviceCosts)||0,beds:parseInt(form.beds)||null,clientId,status:'new',clientResponse:null,noReasons:[],createdAt:serverTimestamp() });
+        await addDoc(collection(db,'listings'), { ...form,price:parseInt(form.price),serviceCosts:parseInt(form.serviceCosts)||0,beds:parseInt(form.beds)||null,clientId,status:'new',clientResponse:null,noReasons:[],createdAt:serverTimestamp(),lat,lng });
       }
       onCreated(); onClose();
     } catch (err) { alert('Error: '+err.message); }
