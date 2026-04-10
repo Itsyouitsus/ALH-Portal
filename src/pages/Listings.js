@@ -65,7 +65,7 @@ function MapPane({ listings, height }) {
     }).addTo(map);
     mapInstanceRef.current = map;
     // Force map to recalculate its size after flex layout resolves
-    setTimeout(() => map.invalidateSize(), 100);
+    setTimeout(() => { map.invalidateSize(); map.invalidateSize(); }, 200);
   }, [mapReady]);
 
   useEffect(() => {
@@ -76,7 +76,7 @@ function MapPane({ listings, height }) {
     markersRef.current = [];
     // Reset to Amsterdam overview each time listings change
     mapInstanceRef.current.setView([52.3676, 4.9041], 12);
-    setTimeout(() => mapInstanceRef.current.invalidateSize(), 50);
+    setTimeout(() => { if (mapInstanceRef.current) { mapInstanceRef.current.invalidateSize(); mapInstanceRef.current.invalidateSize(); } }, 200);
 
     const geocodeAndPlace = async (listing) => {
       try {
@@ -112,8 +112,9 @@ function MapPane({ listings, height }) {
       } catch {}
     };
 
-    let delay = 0;
-    listings.forEach(l => { setTimeout(() => geocodeAndPlace(l), delay); delay += 350; });
+    // Wait for map to be fully sized before placing markers
+    let delay = 600;
+    listings.forEach(l => { setTimeout(() => geocodeAndPlace(l), delay); delay += 400; });
   }, [mapReady, listings]);
 
   return (
@@ -443,20 +444,17 @@ export default function Listings() {
   );
 
   return (
-    <div className="page" style={{ maxWidth: isDesktop ? 1800 : undefined, paddingLeft: isDesktop ? 40 : undefined, paddingRight: isDesktop ? 40 : undefined, paddingTop: isDesktop ? 16 : undefined, overflow: isDesktop ? 'hidden' : undefined, height: isDesktop ? '100vh' : undefined, display: isDesktop ? 'flex' : undefined, flexDirection: isDesktop ? 'column' : undefined, boxSizing: isDesktop ? 'border-box' : undefined }}>
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'Cormorant Garamond', serif", color: 'var(--near-black)', lineHeight: 1 }}>Your listings</div>
-        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>Properties matched to your search profile</div>
-      </div>
+    <div className="page" style={{ maxWidth: isDesktop ? 1800 : undefined, paddingLeft: isDesktop ? 40 : undefined, paddingRight: isDesktop ? 40 : undefined, paddingTop: isDesktop ? 16 : undefined, overflow: isDesktop ? 'hidden' : undefined, height: isDesktop ? '100vh' : undefined, display: isDesktop ? 'flex' : undefined, flexDirection: isDesktop ? 'column' : undefined, boxSizing: isDesktop ? 'border-box' : undefined, paddingBottom: isDesktop ? 16 : undefined }}>
+
 
       {statsBar}
 
-            {isDesktop ? (
+      {isDesktop ? (
         // Desktop: flex fills remaining viewport height after stats
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, flex: 1, minHeight: 0, overflow: 'hidden' }}>
           <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
             {tabBar}
-            <div style={{ overflowY: 'auto', flex: 1, minHeight: 0, paddingRight: 6 }}>
+            <div className="listings-scroll" style={{ overflowY: 'auto', flex: 1, minHeight: 0, paddingRight: 6 }}>
               {cardList}
             </div>
           </div>
