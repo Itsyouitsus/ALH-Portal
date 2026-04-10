@@ -387,3 +387,59 @@ body {
 .listings-scroll::-webkit-scrollbar-thumb:hover {
   background: var(--gold);
 }
+
+/* ── Listings page desktop layout ─────────────────────────── */
+.listings-page {
+  height: calc(100vh - 56px); /* 56px = nav height */
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 40px;
+  box-sizing: border-box;
+  max-width: 1800px;
+}
+
+.listings-grid {
+  display: flex;
+  gap: 20px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.listings-list-col {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+.listings-scroll {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  padding-right: 6px;
+}
+
+/* Map takes equal space */
+.listings-grid > div:last-child {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Mobile: stack vertically, restore normal page scroll */
+@media (max-width: 899px) {
+  .listings-page {
+    height: auto;
+    overflow: visible;
+    padding: 24px 20px;
+  }
+  .listings-grid {
+    flex-direction: column;
+  }
+  .listings-scroll {
+    overflow-y: visible;
+    padding-right: 0;
+  }
+}
