@@ -310,15 +310,15 @@ function ListingCard({ listing, onResponse, onOpenDetail }) {
         <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic', borderLeft: '2px solid var(--gold-mid)', paddingLeft: 8 }}>{listing.notes}</div>
       )}
 
-      {/* Mobile action buttons */}
+      {/* Mobile action buttons — hidden on desktop via CSS class */}
       {!responded && !statusKey && (
-        <>
+        <div className="mobile-only">
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
             <button onClick={() => onResponse(listing, 'yes')} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1.5px solid var(--success)', background: 'var(--success-bg)', color: 'var(--success)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}>✓ Yes, want to view</button>
             <button onClick={() => onResponse(listing, 'no')} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1.5px solid var(--gold-mid)', background: 'var(--gold-bg)', color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}>✕ Not for me</button>
           </div>
           <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-light)', marginTop: 6 }}>Swipe right for yes · left for no</div>
-        </>
+        </div>
       )}
     </div>
   );
@@ -434,15 +434,15 @@ export default function Listings() {
       {statsBar}
 
       {isDesktop ? (
-        // Desktop: tabs + list on left, map on right (map starts under stats)
+        // Desktop: tabs + list on left, map on right — same height, list scrolls independently
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'start' }}>
-          <div>
+          <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 240px)' }}>
             {tabBar}
-            <div style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 280px)', paddingRight: 4 }}>
+            <div style={{ overflowY: 'auto', flex: 1, paddingRight: 6 }}>
               {cardList}
             </div>
           </div>
-          <MapPane listings={listings} />
+          <MapPane listings={listings} height="calc(100vh - 240px)" />
         </div>
       ) : (
         // Mobile: tabs + list (map is a tab)
