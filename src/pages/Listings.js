@@ -10,24 +10,25 @@ const NO_REASONS = [
 ];
 
 const STATUS_CONFIG = {
-  viewing:         { label: 'Viewing scheduled',  color: 'var(--blue)',       bg: '#e8f0fe' },
-  offer_accepted:  { label: 'Offer accepted 🎉',  color: '#1a7a3c',           bg: '#d4edda' },
-  offer_cancelled: { label: 'Offer cancelled',    color: 'var(--text-muted)', bg: 'var(--gold-card)' },
-  offer_rejected:  { label: 'Offer not accepted', color: 'var(--text-muted)', bg: 'var(--gold-card)' },
-  waiting:         { label: 'Waiting for update', color: '#856404',           bg: '#fff3cd' },
-  cancelled:       { label: 'Viewing cancelled',  color: 'var(--text-muted)', bg: 'var(--gold-card)' },
-  not_interested:  { label: 'Not interested',     color: 'var(--text-muted)', bg: 'var(--gold-card)' },
+  wip:              { label: 'Work in progress',   color: '#856404',           bg: '#fff3cd' },
+  viewing:          { label: 'Viewing scheduled',  color: 'var(--blue)',       bg: '#e8f0fe' },
+  making_offer:     { label: 'Making offer',       color: '#a06b1a',           bg: '#fdf3e2' },
+  offer_made:       { label: 'Offer made',         color: '#a06b1a',           bg: '#fdf3e2' },
+  offer_not_accepted: { label: 'Offer not accepted', color: 'var(--text-muted)', bg: 'var(--gold-card)' },
+  rented_out:       { label: 'Rented out',         color: 'var(--text-muted)', bg: 'var(--gold-card)' },
+  offer_accepted:   { label: 'Offer accepted! 🎉', color: '#1a7a3c',           bg: '#d4edda' },
 };
 
 function getStatusKey(l) {
   const s = (l.status || '').toLowerCase();
-  if (s === 'viewing') return 'viewing';
+  if (!s) return null;
   if (s.includes('offer accepted')) return 'offer_accepted';
-  if (s.includes('offer cancelled')) return 'offer_cancelled';
-  if (s.includes('offer not accepted')) return 'offer_rejected';
-  if (s.includes('waiting')) return 'waiting';
-  if (s.includes('viewing cancelled')) return 'cancelled';
-  if (s.includes('not interested')) return 'not_interested';
+  if (s.includes('offer not accepted')) return 'offer_not_accepted';
+  if (s.includes('offer made')) return 'offer_made';
+  if (s.includes('making offer')) return 'making_offer';
+  if (s.includes('rented out')) return 'rented_out';
+  if (s.includes('viewing scheduled')) return 'viewing';
+  if (s.includes('work in progress')) return 'wip';
   return null;
 }
 
@@ -225,7 +226,7 @@ function ListingCard({ listing, onResponse, onOpenDetail, hoveredId, onHover, ca
   const isNo = listing.clientResponse === 'no' && !statusKey;
   const swipeOp = Math.min(Math.abs(swipeX) / 80, 1);
 
-  const accentColor = statusKey === 'offer_accepted' ? '#1a7a3c' : isYes ? 'var(--gold)' : isNo ? 'var(--gold-mid)' : 'transparent';
+  const accentColor = statusKey === 'offer_accepted' ? '#1a7a3c' : statusKey === 'wip' || statusKey === 'viewing' ? 'var(--blue)' : isYes ? 'var(--gold)' : isNo ? 'var(--gold-mid)' : 'transparent';
 
   const isHovered = hoveredId === listing.id;
 
