@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase';
 import { useAuth } from '../hooks/useAuth';
@@ -38,10 +38,11 @@ const AdminIcon = () => (
   </svg>
 );
 
+const link = ({ isActive }) => 'nav-link' + (isActive ? ' active' : '');
+
 export default function Nav() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
   const isAdmin = profile?.role === 'admin';
 
   const initials = profile?.name
@@ -53,48 +54,61 @@ export default function Nav() {
     navigate('/login');
   };
 
-  const mobileLinks = [
-    { to: '/', label: 'Home', icon: <HomeIcon /> },
-    { to: '/listings', label: 'Listings', icon: <ListIcon /> },
-    { to: '/documents', label: 'Docs', icon: <DocIcon /> },
-    { to: '/profile', label: 'Profile', icon: <UserIcon /> },
-    ...(isAdmin ? [{ to: '/admin', label: 'Admin', icon: <AdminIcon /> }] : []),
+  // Admin nav — only admin pages
+  const adminDesktopLinks = [
+    { to: '/admin', label: 'Clients', end: false },
+  ];
+
+  // Client nav — only client pages
+  const clientDesktopLinks = [
+    { to: '/', label: 'Home', end: true },
+    { to: '/listings', label: 'Listings', end: false },
+    { to: '/profile', label: 'My profile', end: false },
+    { to: '/documents', label: 'Documents', end: false },
+  ];
+
+  const clientMobileLinks = [
+    { to: '/', label: 'Home', icon: <HomeIcon />, end: true },
+    { to: '/listings', label: 'Listings', icon: <ListIcon />, end: false },
+    { to: '/documents', label: 'Docs', icon: <DocIcon />, end: false },
+    { to: '/profile', label: 'Profile', icon: <UserIcon />, end: false },
   ];
 
   return (
     <>
       <nav className="nav">
-        <NavLink to="/" className="nav-logo">Amsterdam Life Homes</NavLink>
+        <NavLink to={isAdmin ? '/admin' : '/'} className="nav-logo">Amsterdam Life Homes</NavLink>
+
         <div className="nav-links">
-          <NavLink to="/" end className={({ isActive }) => 'nav-link' + (isActive ? ' active' : '')}>Home</NavLink>
-          <NavLink to="/listings" className={({ isActive }) => 'nav-link' + (isActive ? ' active' : '')}>Listings</NavLink>
-          <NavLink to="/profile" className={({ isActive }) => 'nav-link' + (isActive ? ' active' : '')}>My profile</NavLink>
-          <NavLink to="/documents" className={({ isActive }) => 'nav-link' + (isActive ? ' active' : '')}>Documents</NavLink>
-          {isAdmin && (
-            <NavLink to="/admin" className={({ isActive }) => 'nav-link' + (isActive ? ' active' : '')}>
-              Admin <span className="admin-badge">Admin</span>
-            </NavLink>
+          {isAdmin ? (
+            <>
+              <NavLink to="/admin" className={link}>Admin panel</NavLink>
+              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', padding: '2px 8px', borderRadius: 20, background: 'var(--near-black)', color: 'var(--gold)', marginLeft: 4 }}>Admin</span>
+            </>
+          ) : (
+            clientDesktopLinks.map(l => (
+              <NavLink key={l.to} to={l.to} end={l.end} className={link}>{l.label}</NavLink>
+            ))
           )}
         </div>
+
         <div className="nav-right">
           <div className="nav-avatar">{initials}</div>
           <button className="nav-logout" onClick={handleLogout}>Logout</button>
         </div>
       </nav>
 
-      <nav className="mobile-nav">
-        {mobileLinks.map(link => (
-          <NavLink
-            key={link.to}
-            to={link.to}
-            end={link.to === '/'}
-            className={({ isActive }) => 'mobile-nav-item' + (isActive ? ' active' : '')}
-          >
-            {link.icon}
-            {link.label}
-          </NavLink>
-        ))}
-      </nav>
+      {/* Mobile nav — only for clients */}
+      {!isAdmin && (
+        <nav className="mobile-nav">
+          {clientMobileLinks.map(l => (
+            <NavLink key={l.to} to={l.to} end={l.end} className={({ isActive }) => 'mobile-nav-item' + (isActive ? ' active' : '')}>
+              {l.icon}
+              {l.label}
+            </NavLink>
+          ))}
+        </nav>
+      )}
     </>
   );
 }
