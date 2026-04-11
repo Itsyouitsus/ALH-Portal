@@ -140,39 +140,39 @@ function ProfileForm({ data, onChange, isNew = false }) {
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
       {/* ── Identity ── */}
       <div style={{ gridColumn: '1/-1', borderBottom: '1px solid var(--gold-card)', paddingBottom: 12, marginBottom: 4, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--gold-dark)' }}>Tenants</div>
-      <Field label="Full name(s) *" col="1/-1">inp("name", { placeholder: "Sarah & James Collins" })</Field>
-      <Field label="Primary email *">inp("email", { type: "email", placeholder: "client@example.com" })</Field>
-      <Field label="Second email">inp("email2", { type: "email", placeholder: "partner@example.com (optional)" })</Field>
-      <Field label="Phone">inp("phone", { type: "tel", placeholder: "+31 6 ..." })</Field>
-      <Field label="Children">inp("kids", { placeholder: "Names & ages" })</Field>
-      <Field label="Pets">inp("pets", { placeholder: "Type & name" })</Field>
+      <Field label="Full name(s) *" col="1/-1">{inp("name", { placeholder: "Sarah & James Collins" })}</Field>
+      <Field label="Primary email *">{inp("email", { type: "email", placeholder: "client@example.com" })}</Field>
+      <Field label="Second email">{inp("email2", { type: "email", placeholder: "partner@example.com (optional)" })}</Field>
+      <Field label="Phone">{inp("phone", { type: "tel", placeholder: "+31 6 ..." })}</Field>
+      <Field label="Children">{inp("kids", { placeholder: "Names & ages" })}</Field>
+      <Field label="Pets">{inp("pets", { placeholder: "Type & name" })}</Field>
 
       {/* ── Background ── */}
       <div style={{ gridColumn: '1/-1', borderBottom: '1px solid var(--gold-card)', paddingBottom: 12, marginBottom: 4, marginTop: 8, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--gold-dark)' }}>Background</div>
-      <Field label="Originally from">inp("from", { placeholder: "Country / city" })</Field>
-      <Field label="Currently living in">inp("livingIn", { placeholder: "Current city & country" })</Field>
-      <Field label="Staying in Amsterdam until">inp("stayUntil", { placeholder: "Indefinitely / 2028" })</Field>
-      <Field label="Been in Amsterdam before?">sel("beenBefore", ['Yes', 'No'])</Field>
-      <Field label="Familiar with neighbourhoods?">sel("familiarNeighbourhoods", ['Yes', 'Somewhat', 'No'])</Field>
-      <Field label="Will they bike?">sel("bike", ['Yes', 'No', 'Maybe'])</Field>
-      <Field label="Lifestyle & routine" col="1/-1">ta("lifestyle", { placeholder: "Daily routine, hobbies, work hours..." })</Field>
+      <Field label="Originally from">{inp("from", { placeholder: "Country / city" })}</Field>
+      <Field label="Currently living in">{inp("livingIn", { placeholder: "Current city & country" })}</Field>
+      <Field label="Staying in Amsterdam until">{inp("stayUntil", { placeholder: "Indefinitely / 2028" })}</Field>
+      <Field label="Been in Amsterdam before?">{sel("beenBefore", ['Yes', 'No'])}</Field>
+      <Field label="Familiar with neighbourhoods?">{sel("familiarNeighbourhoods", ['Yes', 'Somewhat', 'No'])}</Field>
+      <Field label="Will they bike?">{sel("bike", ['Yes', 'No', 'Maybe'])}</Field>
+      <Field label="Lifestyle & routine" col="1/-1">{ta("lifestyle", { placeholder: "Daily routine, hobbies, work hours..." })}</Field>
 
       {/* ── Employment 1 ── */}
       <div style={{ gridColumn: '1/-1', borderBottom: '1px solid var(--gold-card)', paddingBottom: 12, marginBottom: 4, marginTop: 8, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--gold-dark)' }}>1st Employment</div>
-      <Field label="Employer">inp("employer1", { placeholder: "Company name" })</Field>
-      <Field label="Office location">inp("office1", { placeholder: "Amsterdam" })</Field>
-      <Field label="Job title">inp("title1", { placeholder: "Product Manager" })</Field>
-      <Field label="Contract type">sel("contract1", ['Permanent', 'Temporary', 'Freelance'])</Field>
-      <Field label="Gross salary (€/month)">inp("salary1", { type: "number", placeholder: "5000" })</Field>
+      <Field label="Employer">{inp("employer1", { placeholder: "Company name" })}</Field>
+      <Field label="Office location">{inp("office1", { placeholder: "Amsterdam" })}</Field>
+      <Field label="Job title">{inp("title1", { placeholder: "Product Manager" })}</Field>
+      <Field label="Contract type">{sel("contract1", ['Permanent', 'Temporary', 'Freelance'])}</Field>
+      <Field label="Gross salary (€/month)">{inp("salary1", { type: "number", placeholder: "5000" })}</Field>
 
       {/* ── Employment 2 ── */}
       <div style={{ gridColumn: '1/-1', borderBottom: '1px solid var(--gold-card)', paddingBottom: 12, marginBottom: 4, marginTop: 8, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--gold-dark)' }}>2nd Employment (optional)</div>
-      <Field label="Employer">inp("employer2", { placeholder: "Optional" })</Field>
-      <Field label="Office location">inp("office2", { placeholder: "Optional" })</Field>
-      <Field label="Job title">inp("title2", { placeholder: "Optional" })</Field>
-      <Field label="Contract type">sel("contract2", ['Permanent', 'Temporary', 'Freelance'])</Field>
-      <Field label="Gross salary (€/month)">inp("salary2", { type: "number", placeholder: "0" })</Field>
-      <Field label="30% tax ruling">sel("taxRuling", ['Yes', 'No', 'Applied for'])</Field>
+      <Field label="Employer">{inp("employer2", { placeholder: "Optional" })}</Field>
+      <Field label="Office location">{inp("office2", { placeholder: "Optional" })}</Field>
+      <Field label="Job title">{inp("title2", { placeholder: "Optional" })}</Field>
+      <Field label="Contract type">{sel("contract2", ['Permanent', 'Temporary', 'Freelance'])}</Field>
+      <Field label="Gross salary (€/month)">{inp("salary2", { type: "number", placeholder: "0" })}</Field>
+      <Field label="30% tax ruling">{sel("taxRuling", ['Yes', 'No', 'Applied for'])}</Field>
       <div className="field">
         <label>Combined gross salary</label>
         <div style={{ fontSize: 20, fontWeight: 700, padding: '6px 0' }}>€{salary.toLocaleString()}/mo</div>
@@ -180,9 +180,9 @@ function ProfileForm({ data, onChange, isNew = false }) {
 
       {/* ── Wish list ── */}
       <div style={{ gridColumn: '1/-1', borderBottom: '1px solid var(--gold-card)', paddingBottom: 12, marginBottom: 4, marginTop: 8, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--gold-dark)' }}>Wish List</div>
-      <Field label="Max rent (€/month)">inp("maxRent", { placeholder: "€ 3,000" })</Field>
-      <Field label="Move-in date">inp("moveIn", { type: "date" })</Field>
-      <Field label="Min size (m²)">inp("minSize", { type: "number", placeholder: "70" })</Field>
+      <Field label="Max rent (€/month)">{inp("maxRent", { placeholder: "€ 3,000" })}</Field>
+      <Field label="Move-in date">{inp("moveIn", { type: "date" })}</Field>
+      <Field label="Min size (m²)">{inp("minSize", { type: "number", placeholder: "70" })}</Field>
       <div className="field"><label>Bedrooms</label><ChipGroup options={CHIP_OPTS.bedrooms} selected={data.bedrooms || []} onChange={v => set('bedrooms', v)} /></div>
       <div className="field"><label>Furnishing</label><ChipGroup options={CHIP_OPTS.furnishing} selected={data.furnishing || []} onChange={v => set('furnishing', v)} /></div>
       <div className="field"><label>Home type</label><ChipGroup options={CHIP_OPTS.homeType} selected={data.homeType || []} onChange={v => set('homeType', v)} /></div>
@@ -191,16 +191,16 @@ function ProfileForm({ data, onChange, isNew = false }) {
 
       {/* ── Preferences ── */}
       <div style={{ gridColumn: '1/-1', borderBottom: '1px solid var(--gold-card)', paddingBottom: 12, marginBottom: 4, marginTop: 8, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--gold-dark)' }}>Preferences</div>
-      <Field label="Liked neighbourhoods" col="1/-1">ta("likedAreas", { placeholder: "Jordaan, De Pijp, Oud-Zuid..." })</Field>
-      <Field label="Disliked areas" col="1/-1">ta("dislikedAreas", { placeholder: "Areas to avoid..." })</Field>
-      <Field label="Must-haves" col="1/-1">ta("likes", { placeholder: "Natural light, open kitchen..." })</Field>
-      <Field label="Deal-breakers" col="1/-1">ta("dislikes", { placeholder: "Ground floor bedroom, heavy traffic..." })</Field>
+      <Field label="Liked neighbourhoods" col="1/-1">{ta("likedAreas", { placeholder: "Jordaan, De Pijp, Oud-Zuid..." })}</Field>
+      <Field label="Disliked areas" col="1/-1">{ta("dislikedAreas", { placeholder: "Areas to avoid..." })}</Field>
+      <Field label="Must-haves" col="1/-1">{ta("likes", { placeholder: "Natural light, open kitchen..." })}</Field>
+      <Field label="Deal-breakers" col="1/-1">{ta("dislikes", { placeholder: "Ground floor bedroom, heavy traffic..." })}</Field>
 
       {/* ── Source + Notes ── */}
       <div style={{ gridColumn: '1/-1', borderBottom: '1px solid var(--gold-card)', paddingBottom: 12, marginBottom: 4, marginTop: 8, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--gold-dark)' }}>Source & Notes</div>
-      <Field label="How they found ALH">sel("source", ['Google', 'Referral', 'IamExpat', 'LinkedIn', 'Instagram', 'Other'])</Field>
-      <Field label="Source detail / referral name">inp("sourceDetail", { placeholder: "e.g. 'Google: amsterdam expat housing'" })</Field>
-      <Field label="Notes from video call" col="1/-1">ta("notes", { placeholder: "Key things from the call..." })</Field>
+      <Field label="How they found ALH">{sel("source", ['Google', 'Referral', 'IamExpat', 'LinkedIn', 'Instagram', 'Other'])}</Field>
+      <Field label="Source detail / referral name">{inp("sourceDetail", { placeholder: "e.g. 'Google: amsterdam expat housing'" })}</Field>
+      <Field label="Notes from video call" col="1/-1">{ta("notes", { placeholder: "Key things from the call..." })}</Field>
     </div>
   );
 }
