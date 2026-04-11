@@ -17,19 +17,44 @@ function ProtectedRoute({ children }) {
   return children;
 }
 
+function AdminRoute({ children }) {
+  const { user, profile, loading } = useAuth();
+  if (loading) return <div className="loading-screen">Amsterdam Life Homes</div>;
+  if (!user) return <Navigate to="/login" replace />;
+  if (profile && profile.role !== 'admin') return <Navigate to="/" replace />;
+  return children;
+}
+
+function ClientRoute({ children }) {
+  const { user, profile, loading } = useAuth();
+  if (loading) return <div className="loading-screen">Amsterdam Life Homes</div>;
+  if (!user) return <Navigate to="/login" replace />;
+  if (profile && profile.role === 'admin') return <Navigate to="/admin" replace />;
+  return children;
+}
+
 function AppLayout() {
-  const { user, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
   if (loading) return <div className="loading-screen">Amsterdam Life Homes</div>;
   if (!user) return null;
+
+  const isAdmin = profile?.role === 'admin';
+
   return (
     <>
       <Nav />
       <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/listings" element={<Listings />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/documents" element={<Documents />} />
-        <Route path="/admin" element={<Admin />} />
+        {/* Admin-only routes */}
+        <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
+
+        {/* Client-only routes */}
+        <Route path="/"          element={<ClientRoute><Home /></ClientRoute>} />
+        <Route path="/listings"  element={<ClientRoute><Listings /></ClientRoute>} />
+        <Route path="/profile"   element={<ClientRoute><Profile /></ClientRoute>} />
+        <Route path="/documents" element={<ClientRoute><Documents /></ClientRoute>} />
+
+        {/* Fallback — redirect based on role */}
+        <Route path="*" element={isAdmin ? <Navigate to="/admin" replace /> : <Navigate to="/" replace />} />
       </Routes>
     </>
   );
