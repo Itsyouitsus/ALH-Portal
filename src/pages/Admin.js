@@ -638,6 +638,36 @@ export default function Admin() {
           <div className="page-sub">{activeCount} active · {draftCount} draft · {listings.length} listings</div>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
+          <button className="btn-ghost" onClick={async () => {
+            const testUser = clients.find(c => (c.email || '').toLowerCase().includes('wassily'));
+            if (!testUser) { alert('Test user not found (looked for email containing "wassily")'); return; }
+            const existing = listings.filter(l => l.clientId === testUser.id);
+            const existingKeys = new Set(existing.map(l => (l.address || '').trim().toLowerCase()));
+            const sourcePool = listings.filter(l => l.clientId !== testUser.id);
+            const seen = new Set();
+            const unique = [];
+            for (const l of sourcePool) {
+              const k = (l.address || '').trim().toLowerCase();
+              if (!k || seen.has(k) || existingKeys.has(k)) continue;
+              seen.add(k);
+              unique.push(l);
+            }
+            if (!unique.length) { alert('Nothing new to clone — test user already has copies of all listings.'); return; }
+            if (!window.confirm(`Clone ${unique.length} listings to ${testUser.name || testUser.email}?`)) return;
+            let ok = 0;
+            for (const l of unique) {
+              const { id, clientId, createdAt, clientResponse, noReasons, status, adminNotes, ...rest } = l;
+              try {
+                await addDoc(collection(db, 'listings'), {
+                  ...rest, clientId: testUser.id, status: '', clientResponse: null,
+                  noReasons: [], adminNotes: '', createdAt: serverTimestamp(),
+                });
+                ok++;
+              } catch (err) { console.error('Clone failed for', l.address, err); }
+            }
+            alert(`Cloned ${ok}/${unique.length} listings to ${testUser.name || testUser.email}`);
+            fetchAll();
+          }}>Clone all → test user</button>
           <button className="btn-ghost" onClick={() => setShowNewClient(true)}>+ Add client</button>
           <button className="btn-primary" onClick={() => setShowNewListing(true)}>+ Push listing</button>
         </div>
