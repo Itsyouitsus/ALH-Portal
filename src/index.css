@@ -264,6 +264,12 @@ body {
   border-color: var(--gold);
   background: var(--white);
 }
+.field input::placeholder,
+.field textarea::placeholder {
+  color: var(--text-muted);
+  opacity: 0.55;
+  font-style: italic;
+}
 .field textarea { resize: vertical; min-height: 72px; }
 .field-row {
   display: grid;
