@@ -81,10 +81,7 @@ export default function Nav() {
 
         <div className="nav-links">
           {isAdmin ? (
-            <>
-              <NavLink to="/admin" className={link}>Admin panel</NavLink>
-              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', padding: '2px 8px', borderRadius: 20, background: 'var(--near-black)', color: 'var(--gold)', marginLeft: 4 }}>Admin</span>
-            </>
+            <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', padding: '2px 8px', borderRadius: 20, background: 'var(--near-black)', color: 'var(--gold)' }}>Admin</span>
           ) : (
             clientDesktopLinks.map(l => (
               <NavLink key={l.to} to={l.to} end={l.end} className={link}>{l.label}</NavLink>
