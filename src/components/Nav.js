@@ -31,10 +31,10 @@ const UserIcon = () => (
     <circle cx="12" cy="7" r="4"/>
   </svg>
 );
-const AdminIcon = () => (
+const EyeIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
     <circle cx="12" cy="12" r="3"/>
-    <path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/>
   </svg>
 );
 
@@ -54,17 +54,16 @@ export default function Nav() {
     navigate('/login');
   };
 
-  // Admin nav — only admin pages
   const adminDesktopLinks = [
     { to: '/admin', label: 'Clients', end: false },
   ];
 
-  // Client nav — only client pages
   const clientDesktopLinks = [
     { to: '/', label: 'Home', end: true },
     { to: '/listings', label: 'Listings', end: false },
     { to: '/profile', label: 'My profile', end: false },
     { to: '/documents', label: 'Documents', end: false },
+    { to: '/renting-preview', label: 'Renting ✦', end: false },
   ];
 
   const clientMobileLinks = [
@@ -72,6 +71,7 @@ export default function Nav() {
     { to: '/listings', label: 'Listings', icon: <ListIcon />, end: false },
     { to: '/documents', label: 'Docs', icon: <DocIcon />, end: false },
     { to: '/profile', label: 'Profile', icon: <UserIcon />, end: false },
+    { to: '/renting-preview', label: 'Preview', icon: <EyeIcon />, end: false },
   ];
 
   return (
@@ -95,7 +95,6 @@ export default function Nav() {
         </div>
       </nav>
 
-      {/* Mobile nav — only for clients */}
       {!isAdmin && (
         <nav className="mobile-nav">
           {clientMobileLinks.map(l => (
