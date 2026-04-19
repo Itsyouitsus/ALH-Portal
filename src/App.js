@@ -33,6 +33,16 @@ function ClientRoute({ children }) {
   return children;
 }
 
+function RentingPreview() {
+  return (
+    <iframe
+      src={process.env.PUBLIC_URL + '/renting-preview.html'}
+      title="Renting Page Preview"
+      style={{ width: '100%', height: 'calc(100vh - 56px)', border: 'none', display: 'block' }}
+    />
+  );
+}
+
 function AppLayout() {
   const { user, profile, loading } = useAuth();
   if (loading) return <div className="loading-screen">Amsterdam Life Homes</div>;
@@ -48,12 +58,13 @@ function AppLayout() {
         <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
 
         {/* Client-only routes */}
-        <Route path="/"          element={<ClientRoute><Home /></ClientRoute>} />
-        <Route path="/listings"  element={<ClientRoute><Listings /></ClientRoute>} />
-        <Route path="/profile"   element={<ClientRoute><Profile /></ClientRoute>} />
-        <Route path="/documents" element={<ClientRoute><Documents /></ClientRoute>} />
+        <Route path="/"                  element={<ClientRoute><Home /></ClientRoute>} />
+        <Route path="/listings"          element={<ClientRoute><Listings /></ClientRoute>} />
+        <Route path="/profile"           element={<ClientRoute><Profile /></ClientRoute>} />
+        <Route path="/documents"         element={<ClientRoute><Documents /></ClientRoute>} />
+        <Route path="/renting-preview"   element={<ClientRoute><RentingPreview /></ClientRoute>} />
 
-        {/* Fallback — redirect based on role */}
+        {/* Fallback */}
         <Route path="*" element={isAdmin ? <Navigate to="/admin" replace /> : <Navigate to="/" replace />} />
       </Routes>
     </>
