@@ -38,11 +38,22 @@ function markerColor(l) {
   return '#eab308';
 }
 
-// ── Map pane ──────────────────────────────────────────────────────────────────
-function MapPane({ listings, height, hoveredId, onMarkerHover, onMarkerClick }) {
+// Check if we are on mobile
+function useIsMobile(breakpoint = 899) {
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= breakpoint);
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth <= breakpoint);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, [breakpoint]);
+  return isMobile;
+}
+
+// Map pane
+function MapPane({ listings, height, hoveredId, onMarkerHover, onMarkerClick, className, style }) {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
-  const markersRef = useRef({});  // keyed by listing.id
+  const markersRef = useRef({});
   const [mapReady, setMapReady] = useState(false);
 
   useEffect(() => {
@@ -58,15 +69,19 @@ function MapPane({ listings, height, hoveredId, onMarkerHover, onMarkerClick }) 
   }, []);
 
   useEffect(() => {
-    if (!mapReady || !mapRef.current || mapInstanceRef.current) return;
+    if (!mapReady || !mapRef.current) return;
+    // If map instance already exists, just invalidate size (e.g. when switching tabs)
+    if (mapInstanceRef.current) {
+      setTimeout(() => mapInstanceRef.current.invalidateSize(), 100);
+      return;
+    }
     const L = window.L;
     const map = L.map(mapRef.current).setView([52.3676, 4.9041], 12);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      attribution: '© OpenStreetMap © CARTO', maxZoom: 19,
+      attribution: '\u00a9 OpenStreetMap \u00a9 CARTO', maxZoom: 19,
     }).addTo(map);
     mapInstanceRef.current = map;
-    // Force map to recalculate its size after flex layout resolves
-    setTimeout(() => { map.invalidateSize(); map.invalidateSize(); }, 200);
+    setTimeout(() => { map.invalidateSize(); }, 200);
   }, [mapReady]);
 
   useEffect(() => {
@@ -74,13 +89,12 @@ function MapPane({ listings, height, hoveredId, onMarkerHover, onMarkerClick }) 
     const L = window.L;
     const map = mapInstanceRef.current;
 
-    // Clear old markers
     Object.values(markersRef.current).forEach(m => m.remove());
     markersRef.current = {};
     map.setView([52.3676, 4.9041], 12);
+
     setTimeout(() => { map.invalidateSize(); map.invalidateSize(); }, 200);
 
-    // Place markers directly from stored coordinates (no geocoding needed)
     listings.forEach(listing => {
       if (!listing.lat || !listing.lng) return;
       const color = markerColor(listing);
@@ -98,27 +112,24 @@ function MapPane({ listings, height, hoveredId, onMarkerHover, onMarkerClick }) 
         <div style="font-family:system-ui,sans-serif;padding:2px 0;">
           ${listing.area ? `<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:#c9a96e;margin-bottom:4px;">${listing.area}</div>` : ''}
           <div style="font-size:14px;font-weight:700;color:#0f0f0d;margin-bottom:6px;line-height:1.3;">${listing.address}</div>
-          <div style="font-size:20px;font-weight:700;color:#0f0f0d;margin-bottom:6px;">€${(listing.price||0).toLocaleString()}<span style="font-size:11px;font-weight:400;color:#888">/mo</span></div>
+          <div style="font-size:20px;font-weight:700;color:#0f0f0d;margin-bottom:6px;">\u20ac${(listing.price||0).toLocaleString()}<span style="font-size:11px;font-weight:400;color:#888">/mo</span></div>
           <div style="display:flex;gap:10px;font-size:12px;color:#666;margin-bottom:10px;flex-wrap:wrap;">
-            ${listing.size ? `<span>📐 ${listing.size}</span>` : ''}
-            ${listing.beds ? `<span>🛏 ${listing.beds} bed</span>` : ''}
-            ${listing.furnishing ? `<span>🪑 ${listing.furnishing}</span>` : ''}
+            ${listing.size ? `<span>\ud83d\udcd0 ${listing.size}</span>` : ''}
+            ${listing.beds ? `<span>\ud83d\udecf ${listing.beds} bed</span>` : ''}
+            ${listing.furnishing ? `<span>\ud83e\ude91 ${listing.furnishing}</span>` : ''}
           </div>
           ${statusCfg ? `<div style="font-size:11px;font-weight:600;color:${statusCfg.color};background:${statusCfg.bg};padding:3px 8px;border-radius:10px;display:inline-block;margin-bottom:8px;">${statusCfg.label}</div><br>` : ''}
-          ${listing.url ? `<a href="${listing.url}" target="_blank" style="display:block;background:#0f0f0d;color:#c9a96e;text-decoration:none;padding:8px 12px;border-radius:7px;font-size:12px;font-weight:600;text-align:center;margin-top:4px;">View listing ↗</a>` : ''}
+          ${listing.url ? `<a href="${listing.url}" target="_blank" style="display:block;background:#0f0f0d;color:#c9a96e;text-decoration:none;padding:8px 12px;border-radius:7px;font-size:12px;font-weight:600;text-align:center;margin-top:4px;">View listing \u2197</a>` : ''}
         </div>`);
 
       const marker = L.marker([listing.lat, listing.lng], { icon }).addTo(map).bindPopup(popup);
-      // Hover: highlight this marker, notify parent
       marker.getElement()?.addEventListener('mouseenter', () => onMarkerHover && onMarkerHover(listing.id));
       marker.getElement()?.addEventListener('mouseleave', () => onMarkerHover && onMarkerHover(null));
-      // Click on marker: scroll to listing in the list
       marker.on('click', () => onMarkerClick && onMarkerClick(listing.id));
       markersRef.current[listing.id] = marker;
     });
   }, [mapReady, listings]);
 
-  // Highlight marker when hoveredId changes
   useEffect(() => {
     Object.entries(markersRef.current).forEach(([id, marker]) => {
       const el = marker.getElement();
@@ -139,32 +150,31 @@ function MapPane({ listings, height, hoveredId, onMarkerHover, onMarkerClick }) 
   }, [hoveredId]);
 
   return (
-    <div style={{ borderRadius: 14, overflow: 'hidden', border: '1px solid var(--gold-mid)', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', position: 'relative' }}>
+    <div className={className} style={{ borderRadius: 14, overflow: 'hidden', border: '1px solid var(--gold-mid)', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', position: 'relative', ...style }}>
       {!mapReady && <div style={{ flex: 1, background: 'var(--card-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 14 }}>Loading map...</div>}
       <div ref={mapRef} style={{ flex: 1, minHeight: 0, height: '100%', display: mapReady ? 'block' : 'none' }} />
       {mapReady && (
         <div style={{ position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 999, background: 'white', borderRadius: 20, padding: '4px 14px', fontSize: 11, color: '#555', display: 'flex', gap: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.12)', whiteSpace: 'nowrap' }}>
-          <span><span style={{ color: '#22c55e', fontWeight: 700 }}>●</span> Interested</span>
-          <span><span style={{ color: '#eab308', fontWeight: 700 }}>●</span> New</span>
-          <span><span style={{ color: '#ef4444', fontWeight: 700 }}>●</span> Not interested</span>
+          <span><span style={{ color: '#22c55e', fontWeight: 700 }}>{'\u25cf'}</span> Interested</span>
+          <span><span style={{ color: '#eab308', fontWeight: 700 }}>{'\u25cf'}</span> New</span>
+          <span><span style={{ color: '#ef4444', fontWeight: 700 }}>{'\u25cf'}</span> Not interested</span>
         </div>
       )}
     </div>
   );
 }
 
-// ── Detail popup ──────────────────────────────────────────────────────────────
+// Detail popup
 function ListingDetailModal({ listing, onClose }) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,22,18,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 600, padding: 24 }} onClick={onClose}>
       <div style={{ background: 'var(--gold-bg)', borderRadius: 16, padding: '28px 28px 24px', width: '100%', maxWidth: 480, position: 'relative' }} onClick={e => e.stopPropagation()}>
-        <button onClick={onClose} style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: 'var(--text-muted)', lineHeight: 1 }}>×</button>
-        {listing.area && <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--gold-dark)', marginBottom: 6 }}>{listing.area} · {listing.city || 'Amsterdam'}</div>}
+        <button onClick={onClose} style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: 'var(--text-muted)', lineHeight: 1 }}>{'\u00d7'}</button>
+        {listing.area && <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--gold-dark)', marginBottom: 6 }}>{listing.area} {'\u00b7'} {listing.city || 'Amsterdam'}</div>}
         <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--near-black)', marginBottom: 16, lineHeight: 1.3, paddingRight: 28 }}>{listing.address}</div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 20 }}>
-          <span style={{ fontSize: 28, fontWeight: 700 }}>€{listing.price?.toLocaleString()}</span>
+          <span style={{ fontSize: 28, fontWeight: 700 }}>{'\u20ac'}{listing.price?.toLocaleString()}</span>
           <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>/month</span>
-
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 20px', marginBottom: 20 }}>
           {[['Size', listing.size], ['Bedrooms', listing.beds ? `${listing.beds} bed${listing.beds > 1 ? 's' : ''}` : null], ['Furnishing', listing.furnishing], ['Available', listing.availableFrom], ['Neighbourhood', listing.area], ['Energy label', listing.energyLabel], ['Floor', listing.floor]].filter(([, v]) => v).map(([label, val]) => (
@@ -175,13 +185,13 @@ function ListingDetailModal({ listing, onClose }) {
           ))}
         </div>
         {listing.notes && <div style={{ fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic', borderLeft: '2px solid var(--gold)', paddingLeft: 10, marginBottom: 16 }}>{listing.notes}</div>}
-        {listing.url && <a href={listing.url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--near-black)', color: 'var(--gold)', textDecoration: 'none', padding: '12px 18px', borderRadius: 10, fontSize: 14, fontWeight: 600, justifyContent: 'center' }}>View original listing ↗</a>}
+        {listing.url && <a href={listing.url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--near-black)', color: 'var(--gold)', textDecoration: 'none', padding: '12px 18px', borderRadius: 10, fontSize: 14, fontWeight: 600, justifyContent: 'center' }}>View original listing {'\u2197'}</a>}
       </div>
     </div>
   );
 }
 
-// ── Why not modal ─────────────────────────────────────────────────────────────
+// Why not modal
 function NoFeedbackModal({ listing, onSubmit, onClose }) {
   const [selected, setSelected] = useState([]);
   const [other, setOther] = useState('');
@@ -190,7 +200,7 @@ function NoFeedbackModal({ listing, onSubmit, onClose }) {
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,22,18,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500, padding: 24 }} onClick={onClose}>
       <div style={{ background: 'var(--gold-bg)', borderRadius: 16, padding: '28px 24px', width: '100%', maxWidth: 480 }} onClick={e => e.stopPropagation()}>
         <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 4 }}>Why not this one?</div>
-        <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>{listing.address} — select all that apply</div>
+        <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>{listing.address} - select all that apply</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
           {NO_REASONS.map(r => (
             <button key={r} onClick={() => toggle(r)} style={{ padding: '7px 14px', borderRadius: 20, border: '1.5px solid', borderColor: selected.includes(r) ? 'var(--near-black)' : 'var(--gold-mid)', background: selected.includes(r) ? 'var(--near-black)' : 'var(--gold-bg)', color: selected.includes(r) ? 'var(--gold-bg)' : 'var(--text-muted)', fontSize: 13, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", transition: 'all 0.12s' }}>{r}</button>
@@ -198,77 +208,78 @@ function NoFeedbackModal({ listing, onSubmit, onClose }) {
         </div>
         <div className="field">
           <label>Other reason (optional)</label>
-          <input type="text" value={other} onChange={e => setOther(e.target.value)} placeholder="e.g. street is too noisy" />
+          <input value={other} onChange={e => setOther(e.target.value)} placeholder="e.g. basement apartment" />
         </div>
-        <button className="btn-primary" style={{ width: '100%', marginTop: 16, padding: 13, fontSize: 15 }} onClick={() => { const r = [...selected, ...(other ? [other] : [])]; if (r.length) onSubmit(r); }} disabled={selected.length === 0 && !other}>
-          Submit feedback
-        </button>
+        <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+          <button className="btn-ghost" onClick={onClose} style={{ flex: 1 }}>Cancel</button>
+          <button className="btn-primary" onClick={() => { const reasons = [...selected]; if (other.trim()) reasons.push(other.trim()); onSubmit(reasons); }} style={{ flex: 1 }}>Submit</button>
+        </div>
       </div>
     </div>
   );
 }
 
-// ── Listing card — matches screenshot exactly ─────────────────────────────────
-// Layout: [neighbourhood · city] [price top-right]
-//         [bold address]
-//         [📐 size  ↔ beds  🪑 furnishing]   [✓ ✕ buttons]
-//         [📅 available from]
-//         [status badge if any]
-//         [no reasons if passed]
+// Listing card
 function ListingCard({ listing, onResponse, onOpenDetail, hoveredId, onHover, cardRef }) {
-  const startX = useRef(null);
-  const [swipeX, setSwipeX] = useState(0);
-  const [swiping, setSwiping] = useState(false);
+  const isYes = listing.clientResponse === 'yes';
+  const isNo  = listing.clientResponse === 'no';
+  const responded = isYes || isNo;
   const statusKey = getStatusKey(listing);
   const statusCfg = statusKey ? STATUS_CONFIG[statusKey] : null;
-  const responded = !!listing.clientResponse;
-  const isYes = listing.clientResponse === 'yes' || !!statusKey;
-  const isNo = listing.clientResponse === 'no' && !statusKey;
-  const swipeOp = Math.min(Math.abs(swipeX) / 80, 1);
-
-  const accentColor = statusKey === 'offer_accepted' ? '#1a7a3c' : statusKey === 'wip' || statusKey === 'viewing' ? 'var(--blue)' : isYes ? 'var(--gold)' : isNo ? 'var(--gold-mid)' : 'transparent';
-
   const isHovered = hoveredId === listing.id;
+
+  // Swipe state
+  const [swipeX, setSwipeX] = useState(0);
+  const [swiping, setSwiping] = useState(false);
+  const startX = useRef(0);
+  const swipeOp = Math.min(Math.abs(swipeX) / 120, 1);
+
+  const onTouchStart = e => { if (responded || statusKey) return; startX.current = e.touches[0].clientX; setSwiping(true); };
+  const onTouchMove  = e => { if (!swiping) return; setSwipeX(e.touches[0].clientX - startX.current); };
+  const onTouchEnd   = () => {
+    if (!swiping) return;
+    setSwiping(false);
+    if (swipeX > 80) onResponse(listing, 'yes');
+    else if (swipeX < -80) onResponse(listing, 'no');
+    setSwipeX(0);
+  };
 
   return (
     <div
       ref={cardRef}
-      onMouseEnter={() => onHover && onHover(listing.id)}
-      onMouseLeave={() => onHover && onHover(null)}
-      onTouchStart={e => { startX.current = e.touches[0].clientX; setSwiping(true); }}
-      onTouchMove={e => { if (!startX.current) return; setSwipeX(e.touches[0].clientX - startX.current); }}
-      onTouchEnd={() => { if (swipeX > 60) onResponse(listing, 'yes'); else if (swipeX < -60) onResponse(listing, 'no'); setSwipeX(0); setSwiping(false); startX.current = null; }}
+      onMouseEnter={() => onHover(listing.id)}
+      onMouseLeave={() => onHover(null)}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
       style={{
         background: isHovered ? 'var(--gold-card)' : 'var(--card-bg)',
-        borderRadius: 12,
-        padding: '11px 16px',
-        scrollMarginTop: 12,
-        borderLeft: `4px solid ${isHovered ? 'var(--gold)' : accentColor}`,
+        borderRadius: 12, padding: '12px 16px',
+        borderLeft: isYes ? '3px solid var(--success)' : isNo ? '3px solid var(--danger)' : statusCfg ? `3px solid ${statusCfg.color}` : '3px solid transparent',
         opacity: isNo && !isHovered ? 0.75 : 1,
-
         transform: `translateX(${swipeX * 0.3}px)`,
         transition: swiping ? 'none' : 'all 0.15s ease',
         position: 'relative', overflow: 'hidden',
       }}
     >
       {/* Swipe overlays */}
-      {swipeX > 20 && <div style={{ position: 'absolute', inset: 0, background: `rgba(45,122,79,${swipeOp * 0.12})`, display: 'flex', alignItems: 'center', paddingLeft: 20, pointerEvents: 'none' }}><span style={{ fontSize: 26, fontWeight: 700, color: 'var(--success)', opacity: swipeOp }}>YES ✓</span></div>}
-      {swipeX < -20 && <div style={{ position: 'absolute', inset: 0, background: `rgba(163,45,45,${swipeOp * 0.12})`, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: 20, pointerEvents: 'none' }}><span style={{ fontSize: 26, fontWeight: 700, color: 'var(--danger)', opacity: swipeOp }}>NO ✕</span></div>}
+      {swipeX > 20 && <div style={{ position: 'absolute', inset: 0, background: `rgba(45,122,79,${swipeOp * 0.12})`, display: 'flex', alignItems: 'center', paddingLeft: 20, pointerEvents: 'none' }}><span style={{ fontSize: 26, fontWeight: 700, color: 'var(--success)', opacity: swipeOp }}>YES {'\u2713'}</span></div>}
+      {swipeX < -20 && <div style={{ position: 'absolute', inset: 0, background: `rgba(163,45,45,${swipeOp * 0.12})`, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: 20, pointerEvents: 'none' }}><span style={{ fontSize: 26, fontWeight: 700, color: 'var(--danger)', opacity: swipeOp }}>NO {'\u2715'}</span></div>}
 
-      {/* Price — absolute top-right so it never affects content height */}
+      {/* Price */}
       <div style={{ position: 'absolute', top: 11, right: 16, textAlign: 'right' }}>
         <div>
-          <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--near-black)', letterSpacing: '-0.01em' }}>€{listing.price?.toLocaleString()}</span>
+          <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--near-black)', letterSpacing: '-0.01em' }}>{'\u20ac'}{listing.price?.toLocaleString()}</span>
           <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 2 }}>/mo</span>
         </div>
         {listing.serviceCosts > 0 && (
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>+€{listing.serviceCosts?.toLocaleString()} service costs</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>+{'\u20ac'}{listing.serviceCosts?.toLocaleString()} service costs</div>
         )}
       </div>
 
-      {/* Row 1: neighbourhood — left only, padded right so text doesn't overlap price */}
+      {/* Row 1: neighbourhood */}
       <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--gold-dark)', marginBottom: 2, paddingRight: 140 }}>
-        {[listing.area, listing.city || 'Amsterdam'].filter(Boolean).join(' · ')}
+        {[listing.area, listing.city || 'Amsterdam'].filter(Boolean).join(' \u00b7 ')}
       </div>
 
       {/* Row 2: address (clickable) */}
@@ -281,7 +292,6 @@ function ListingCard({ listing, onResponse, onOpenDetail, hoveredId, onHover, ca
 
       {/* Row 3: specs + action buttons */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
-        {/* Specs — same line, icon + text, matching screenshot */}
         <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'center' }}>
           {listing.size && (
             <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: 'var(--near-black)' }}>
@@ -303,17 +313,16 @@ function ListingCard({ listing, onResponse, onOpenDetail, hoveredId, onHover, ca
           )}
         </div>
 
-        {/* Action buttons — right side, same row as specs */}
         {!responded && !statusKey && (
           <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
             <button
               onClick={() => onResponse(listing, 'yes')}
               style={{ width: 34, height: 34, borderRadius: 8, border: '1.5px solid var(--gold-mid)', background: 'var(--gold-bg)', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'inherit', transition: 'all 0.12s' }}
-            >✓</button>
+            >{'\u2713'}</button>
             <button
               onClick={() => onResponse(listing, 'no')}
               style={{ width: 34, height: 34, borderRadius: 8, border: '1.5px solid var(--gold-mid)', background: 'var(--gold-bg)', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'inherit', transition: 'all 0.12s' }}
-            >✕</button>
+            >{'\u2715'}</button>
           </div>
         )}
         {responded && !statusKey && (
@@ -328,7 +337,6 @@ function ListingCard({ listing, onResponse, onOpenDetail, hoveredId, onHover, ca
           {listing.availableFrom}
         </div>
       )}
-
 
       {/* Status badge */}
       {statusCfg && (
@@ -349,30 +357,32 @@ function ListingCard({ listing, onResponse, onOpenDetail, hoveredId, onHover, ca
         <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic', borderLeft: '2px solid var(--gold-mid)', paddingLeft: 8 }}>{listing.notes}</div>
       )}
 
-      {/* Mobile action buttons — hidden on desktop via CSS class */}
+      {/* Mobile action buttons */}
       {!responded && !statusKey && (
         <div className="mobile-only">
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-            <button onClick={() => onResponse(listing, 'yes')} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1.5px solid var(--success)', background: 'var(--success-bg)', color: 'var(--success)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}>✓ Yes, want to view</button>
-            <button onClick={() => onResponse(listing, 'no')} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1.5px solid var(--gold-mid)', background: 'var(--gold-bg)', color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}>✕ Not for me</button>
+            <button onClick={() => onResponse(listing, 'yes')} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1.5px solid var(--success)', background: 'var(--success-bg)', color: 'var(--success)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}>{'\u2713'} Yes, want to view</button>
+            <button onClick={() => onResponse(listing, 'no')} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1.5px solid var(--gold-mid)', background: 'var(--gold-bg)', color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}>{'\u2715'} Not for me</button>
           </div>
-          <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-light)', marginTop: 6 }}>Swipe right for yes · left for no</div>
+          <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-light)', marginTop: 6 }}>Swipe right for yes, left for no</div>
         </div>
       )}
     </div>
   );
 }
 
-// ── Main ──────────────────────────────────────────────────────────────────────
+// Main
 export default function Listings() {
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalListing, setModalListing] = useState(null);
   const [detailListing, setDetailListing] = useState(null);
   const [tab, setTab] = useState('new');
   const [hoveredId, setHoveredId] = useState(null);
-  const cardRefs = useRef({});  // listing.id → DOM ref
+  const cardRefs = useRef({});
+
   useEffect(() => {
     if (!user) return;
     getDocs(query(collection(db, 'listings'), where('clientId', '==', user.uid))).then(snap => {
@@ -394,15 +404,17 @@ export default function Listings() {
   };
 
   const handleMarkerClick = (id) => {
-    // Find which tab this listing belongs to and switch to it if needed
     const listing = listings.find(l => l.id === id);
     if (!listing) return;
-    // Switch to the tab that would show this listing
+    if (isMobile) {
+      // On mobile, open the detail modal directly from the map
+      setDetailListing(listing);
+      return;
+    }
     const sk = getStatusKey(listing);
     if (!listing.clientResponse && !sk) setTab('new');
     else if (listing.clientResponse === 'yes' || sk) setTab('yes');
     else if (listing.clientResponse === 'no' && !sk) setTab('no');
-    // Scroll after a tick (tab change may re-render)
     setTimeout(() => {
       const el = cardRefs.current[id];
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -425,28 +437,32 @@ export default function Listings() {
   const viewings  = listings.filter(l => l.status === 'viewing').length;
   const offers    = listings.filter(l => ['offer_accepted','offer_rejected','offer_cancelled'].includes(getStatusKey(l))).length;
 
+  // On mobile, add a "Map" tab. On desktop, map is always visible beside the list.
   const TABS = [
     { key: 'new',  label: 'New',            count: newCount,       dot: newCount > 0 },
     { key: 'yes',  label: 'Interested',     count: yesCount },
     { key: 'no',   label: 'Not interested', count: noCount },
     { key: 'all',  label: 'All',            count: listings.length },
   ];
+  if (isMobile) {
+    TABS.push({ key: 'map', label: '\ud83d\uddfa Map', count: null });
+  }
 
   const filtered = listings.filter(l => {
+    if (tab === 'map') return true;
     if (tab === 'new') return !l.clientResponse && !getStatusKey(l);
     if (tab === 'yes') return l.clientResponse === 'yes' || getStatusKey(l);
     if (tab === 'no')  return l.clientResponse === 'no' && !getStatusKey(l);
     return true;
   });
 
-  // Map shows same listings as current tab (all tab = all listings)
-  const mapListings = filtered;
+  const mapListings = tab === 'map' ? listings : filtered;
 
   if (loading) return <div className="loading-screen">Loading your listings...</div>;
 
-  // ── Stats bar — full width, always above list+map ─────────────────────────
+  // Stats bar
   const statsBar = (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginBottom: 14 }}>
+    <div className="listings-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginBottom: 14 }}>
       {[
         ['Properties found', listings.length, false],
         ['Awaiting response', newCount, newCount > 0],
@@ -462,7 +478,7 @@ export default function Listings() {
     </div>
   );
 
-  // ── Tab bar ───────────────────────────────────────────────────────────────
+  // Tab bar
   const tabBar = (
     <div style={{ display: 'flex', gap: 3, marginBottom: 10, background: 'var(--card-bg)', borderRadius: 9, padding: 3 }}>
       {TABS.map(t => (
@@ -474,48 +490,65 @@ export default function Listings() {
     </div>
   );
 
-  // ── Card list ─────────────────────────────────────────────────────────────
-  const cardList = tab === 'map' ? <MapPane listings={listings} height="calc(100vh - 320px)" /> : (
-    listings.length === 0 ? (
-      <div className="card" style={{ textAlign: 'center', padding: '48px 24px', color: 'var(--text-muted)' }}>
-        <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, marginBottom: 10 }}>No listings yet</div>
-        <div style={{ fontSize: 14 }}>Your agent is actively searching. You'll receive an email as soon as new properties are shared with you.</div>
-      </div>
-    ) : filtered.length === 0 ? (
-      <div className="card" style={{ textAlign: 'center', padding: 32, color: 'var(--text-muted)', fontSize: 14 }}>No listings in this category yet.</div>
-    ) : (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {filtered.map(l => {
-              if (!cardRefs.current[l.id]) cardRefs.current[l.id] = { current: null };
-              return <ListingCard
-                key={l.id}
-                listing={l}
-                onResponse={handleResponse}
-                onOpenDetail={setDetailListing}
-                hoveredId={hoveredId}
-                onHover={setHoveredId}
-                cardRef={el => { cardRefs.current[l.id] = el; }}
-              />;
-            })}
-      </div>
-    )
+  // Card list (or mobile map)
+  const showMobileMap = isMobile && tab === 'map';
+
+  const cardList = listings.length === 0 ? (
+    <div className="card" style={{ textAlign: 'center', padding: '48px 24px', color: 'var(--text-muted)' }}>
+      <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, marginBottom: 10 }}>No listings yet</div>
+      <div style={{ fontSize: 14 }}>Your agent is actively searching. You'll receive an email as soon as new properties are shared with you.</div>
+    </div>
+  ) : filtered.length === 0 && !showMobileMap ? (
+    <div className="card" style={{ textAlign: 'center', padding: 32, color: 'var(--text-muted)', fontSize: 14 }}>No listings in this category yet.</div>
+  ) : (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {filtered.map(l => {
+        if (!cardRefs.current[l.id]) cardRefs.current[l.id] = { current: null };
+        return <ListingCard
+          key={l.id}
+          listing={l}
+          onResponse={handleResponse}
+          onOpenDetail={setDetailListing}
+          hoveredId={hoveredId}
+          onHover={setHoveredId}
+          cardRef={el => { cardRefs.current[l.id] = el; }}
+        />;
+      })}
+    </div>
   );
 
   return (
     <div className="page listings-page">
-
-
       {statsBar}
 
-      {/* Desktop: two-column grid. Mobile: stacked */}
+      {/* Desktop: two-column grid. Mobile: stacked with Map tab */}
       <div className="listings-grid">
         <div className="listings-list-col">
           {tabBar}
           <div className="listings-scroll">
-            {cardList}
+            {showMobileMap ? (
+              <MapPane
+                listings={listings}
+                height="100%"
+                hoveredId={hoveredId}
+                onMarkerHover={setHoveredId}
+                onMarkerClick={handleMarkerClick}
+                className="listings-map-mobile"
+              />
+            ) : (
+              cardList
+            )}
           </div>
         </div>
-        <MapPane listings={mapListings} height="100%" hoveredId={hoveredId} onMarkerHover={setHoveredId} onMarkerClick={handleMarkerClick} />
+        {/* Desktop-only persistent map */}
+        <MapPane
+          listings={mapListings}
+          height="100%"
+          hoveredId={hoveredId}
+          onMarkerHover={setHoveredId}
+          onMarkerClick={handleMarkerClick}
+          className="listings-map-desktop"
+        />
       </div>
 
       {modalListing && <NoFeedbackModal listing={modalListing} onSubmit={r => submitResponse(modalListing, 'no', r)} onClose={() => setModalListing(null)} />}
