@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -125,7 +126,9 @@ function MapPane({ listings, hoveredId, onMarkerHover, onMarkerClick, style }) {
           ${statusCfg ? `<div style="font-size:10px;font-weight:600;color:${statusCfg.color};background:${statusCfg.bg};padding:2px 8px;border-radius:10px;display:inline-block;margin-top:6px;">${statusCfg.label}</div>` : ''}
         </div>`);
 
-      const marker = L.marker([listing.lat, listing.lng], { icon }).addTo(map).bindPopup(popup);
+      const marker = L.marker([listing.lat, listing.lng], { icon }).addTo(map);
+      // Only bind popup on desktop (onMarkerClick handles mobile via bottom sheet)
+      if (window.innerWidth > 899) marker.bindPopup(popup);
       marker.getElement()?.addEventListener('mouseenter', () => onMarkerHover && onMarkerHover(listing.id));
       marker.getElement()?.addEventListener('mouseleave', () => onMarkerHover && onMarkerHover(null));
       marker.on('click', () => onMarkerClick && onMarkerClick(listing.id));
@@ -156,7 +159,7 @@ function MapPane({ listings, hoveredId, onMarkerHover, onMarkerClick, style }) {
       {!mapReady && <div style={{ flex: 1, background: 'var(--card-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 14, minHeight: 200 }}>Loading map...</div>}
       <div ref={mapRef} style={{ flex: 1, minHeight: 0, height: '100%', display: mapReady ? 'block' : 'none' }} />
       {mapReady && (
-        <div style={{ position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)', zIndex: 999, background: 'white', borderRadius: 20, padding: '3px 12px', fontSize: 10, color: '#555', display: 'flex', gap: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.12)', whiteSpace: 'nowrap' }}>
+        <div style={{ position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)', zIndex: 400, background: 'white', borderRadius: 20, padding: '3px 12px', fontSize: 10, color: '#555', display: 'flex', gap: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.12)', whiteSpace: 'nowrap' }}>
           <span style={{ color: '#22c55e', fontWeight: 700 }}>{'\u25cf'}</span> Interested
           <span style={{ color: '#eab308', fontWeight: 700 }}>{'\u25cf'}</span> New
           <span style={{ color: '#ef4444', fontWeight: 700 }}>{'\u25cf'}</span> Not interested
@@ -169,7 +172,7 @@ function MapPane({ listings, hoveredId, onMarkerHover, onMarkerClick, style }) {
 // Detail popup
 function ListingDetailModal({ listing, onClose }) {
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,22,18,0.65)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 600, padding: 0 }} onClick={onClose}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,22,18,0.65)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 1000, padding: 0 }} onClick={onClose}>
       <div style={{ background: 'var(--gold-bg)', borderRadius: '16px 16px 0 0', padding: '24px 20px 32px', width: '100%', maxWidth: 480, position: 'relative', maxHeight: '80vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
         <button onClick={onClose} style={{ position: 'absolute', top: 12, right: 16, background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: 'var(--text-muted)', lineHeight: 1 }}>{'\u00d7'}</button>
         {listing.area && <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--gold-dark)', marginBottom: 6 }}>{listing.area} {'\u00b7'} {listing.city || 'Amsterdam'}</div>}
@@ -347,7 +350,25 @@ export default function Listings() {
   const [loading, setLoading] = useState(true);
   const [modalListing, setModalListing] = useState(null);
   const [detailListing, setDetailListing] = useState(null);
-  const [tab, setTab] = useState('new');
+  const location = useLocation();
+  const nav = useNavigate();
+  const searchParams = new URLSearchParams(location.search);
+  const viewParam = searchParams.get('view');
+  const [tab, setTab] = useState(viewParam === 'map' ? 'map' : 'new');
+
+  // Sync tab when URL changes (e.g. bottom nav Map button)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('view') === 'map') setTab('map');
+  }, [location.search]);
+
+  // When switching away from map tab, clear the URL param
+  const switchTab = (key) => {
+    setTab(key);
+    if (key !== 'map' && viewParam === 'map') {
+      nav('/listings', { replace: true });
+    }
+  };
   const [hoveredId, setHoveredId] = useState(null);
   const cardRefs = useRef({});
 
@@ -376,9 +397,9 @@ export default function Listings() {
     if (!listing) return;
     if (isMobile) { setDetailListing(listing); return; }
     const sk = getStatusKey(listing);
-    if (!listing.clientResponse && !sk) setTab('new');
-    else if (listing.clientResponse === 'yes' || sk) setTab('yes');
-    else if (listing.clientResponse === 'no' && !sk) setTab('no');
+    if (!listing.clientResponse && !sk) switchTab('new');
+    else if (listing.clientResponse === 'yes' || sk) switchTab('yes');
+    else if (listing.clientResponse === 'no' && !sk) switchTab('no');
     setTimeout(() => {
       const el = cardRefs.current[id];
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -460,7 +481,7 @@ export default function Listings() {
   const tabBar = (
     <div style={{ display: 'flex', gap: 2, marginBottom: 10, background: 'var(--card-bg)', borderRadius: 9, padding: 3, overflow: 'hidden' }}>
       {TABS.map(t => (
-        <button key={t.key} onClick={() => setTab(t.key)} style={{
+        <button key={t.key} onClick={() => switchTab(t.key)} style={{
           flex: 1, padding: isMobile ? '7px 4px' : '6px 10px', borderRadius: 6,
           fontSize: isMobile ? 11 : 12, fontWeight: 600, cursor: 'pointer', border: 'none',
           fontFamily: "'DM Sans',sans-serif",
