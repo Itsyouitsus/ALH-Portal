@@ -451,17 +451,8 @@ function MobileListings() {
   // If showing map (from bottom nav), render full-screen map
   if (showMap) {
     return (
-      <div style={{ padding: '12px 12px 120px', maxWidth: '100vw', overflow: 'hidden' }}>
-        {/* Stats 2x2 */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
-          {[['Properties', listings.length], ['New', newCount], ['Interested', yesCount], ['Viewings', viewings]].map(([label, val]) => (
-            <div key={label} style={{ background: 'var(--card-bg)', borderRadius: 8, padding: '8px 12px', textAlign: 'center' }}>
-              <div style={{ fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)', marginBottom: 2 }}>{label}</div>
-              <div style={{ fontSize: 20, fontWeight: 700, color: label === 'New' && val > 0 ? 'var(--gold-dark)' : 'var(--near-black)', lineHeight: 1 }}>{val}</div>
-            </div>
-          ))}
-        </div>
-        <MapPane listings={listings} hoveredId={hoveredId} onMarkerHover={setHoveredId} onMarkerClick={handleMarkerClick} style={{ height: 'calc(100vh - 240px)', minHeight: 350 }} />
+      <div style={{ padding: '0 0 70px', maxWidth: '100vw', overflow: 'hidden' }}>
+        <MapPane listings={listings} hoveredId={hoveredId} onMarkerHover={setHoveredId} onMarkerClick={handleMarkerClick} style={{ height: 'calc(100vh - 126px)', borderRadius: 0, border: 'none' }} />
         {detailListing && <ListingDetailModal listing={detailListing} onClose={() => setDetailListing(null)} isMobile={true} />}
       </div>
     );
