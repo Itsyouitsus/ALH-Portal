@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { useLocation } from 'react-router-dom';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 
@@ -405,12 +406,16 @@ function filterListings(listings, tab) {
 // ══════════════════════════════════════════════════════════════════════════════
 function MobileListings() {
   const { user } = useAuth();
+  const location = useLocation();
   const { listings, setListings, loading } = useListingsData(user);
   const [modalListing, setModalListing] = useState(null);
   const [detailListing, setDetailListing] = useState(null);
   const [tab, setTab] = useState('new');
   const [hoveredId, setHoveredId] = useState(null);
   const { newCount, yesCount, noCount, viewings } = useCounts(listings);
+
+  // Check if we should show the map (from bottom nav)
+  const showMap = new URLSearchParams(location.search).get('view') === 'map';
 
   const handleResponse = (listing, response) => {
     if (getStatusKey(listing) === 'viewing') return;
@@ -435,15 +440,32 @@ function MobileListings() {
   if (loading) return <div className="loading-screen">Loading your listings...</div>;
 
   const filtered = filterListings(listings, tab);
-  const showMap = tab === 'map';
 
   const TABS = [
     { key: 'new',  label: 'New',        count: newCount, dot: newCount > 0 },
     { key: 'yes',  label: 'Interested', count: yesCount },
     { key: 'no',   label: 'Passed',     count: noCount },
     { key: 'all',  label: 'All',        count: listings.length },
-    { key: 'map',  label: 'Map',        count: null },
   ];
+
+  // If showing map (from bottom nav), render full-screen map
+  if (showMap) {
+    return (
+      <div style={{ padding: '12px 12px 120px', maxWidth: '100vw', overflow: 'hidden' }}>
+        {/* Stats 2x2 */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+          {[['Properties', listings.length], ['New', newCount], ['Interested', yesCount], ['Viewings', viewings]].map(([label, val]) => (
+            <div key={label} style={{ background: 'var(--card-bg)', borderRadius: 8, padding: '8px 12px', textAlign: 'center' }}>
+              <div style={{ fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)', marginBottom: 2 }}>{label}</div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: label === 'New' && val > 0 ? 'var(--gold-dark)' : 'var(--near-black)', lineHeight: 1 }}>{val}</div>
+            </div>
+          ))}
+        </div>
+        <MapPane listings={listings} hoveredId={hoveredId} onMarkerHover={setHoveredId} onMarkerClick={handleMarkerClick} style={{ height: 'calc(100vh - 240px)', minHeight: 350 }} />
+        {detailListing && <ListingDetailModal listing={detailListing} onClose={() => setDetailListing(null)} isMobile={true} />}
+      </div>
+    );
+  }
 
   return (
     <div style={{ padding: '12px 12px 120px', maxWidth: '100vw', overflow: 'hidden' }}>
@@ -457,7 +479,7 @@ function MobileListings() {
         ))}
       </div>
 
-      {/* Tabs */}
+      {/* Tabs (no Map tab, map is in bottom nav) */}
       <div style={{ display: 'flex', gap: 2, marginBottom: 10, background: 'var(--card-bg)', borderRadius: 9, padding: 3 }}>
         {TABS.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)} style={{
@@ -474,9 +496,7 @@ function MobileListings() {
       </div>
 
       {/* Content */}
-      {showMap ? (
-        <MapPane listings={listings} hoveredId={hoveredId} onMarkerHover={setHoveredId} onMarkerClick={handleMarkerClick} style={{ height: 'calc(100vh - 240px)', minHeight: 350 }} />
-      ) : listings.length === 0 ? (
+      {listings.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '48px 20px', color: 'var(--text-muted)' }}>
           <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, marginBottom: 10 }}>No listings yet</div>
           <div style={{ fontSize: 14 }}>Your agent is actively searching.</div>
@@ -495,7 +515,7 @@ function MobileListings() {
   );
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
+
 // DESKTOP LISTINGS PAGE (unchanged from original working version)
 // ══════════════════════════════════════════════════════════════════════════════
 function DesktopListings() {
