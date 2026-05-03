@@ -49,7 +49,7 @@ function useIsMobile(bp = 899) {
 }
 
 // Map pane (shared between mobile and desktop)
-function MapPane({ listings, hoveredId, onMarkerHover, onMarkerClick, style, isMobile }) {
+function MapPane({ listings, hoveredId, onMarkerHover, onMarkerClick, style }) {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersRef = useRef({});
@@ -153,7 +153,7 @@ function MapPane({ listings, hoveredId, onMarkerHover, onMarkerClick, style, isM
       {!mapReady && <div style={{ flex: 1, background: 'var(--card-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 14, minHeight: 200 }}>Loading map...</div>}
       <div ref={mapRef} style={{ flex: 1, minHeight: 0, height: '100%', display: mapReady ? 'block' : 'none' }} />
       {mapReady && (
-        <div style={{ position: 'absolute', bottom: isMobile ? 72 : 12, left: '50%', transform: 'translateX(-50%)', zIndex: 999, background: 'white', borderRadius: 20, padding: '4px 14px', fontSize: 11, color: '#555', display: 'flex', gap: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.12)', whiteSpace: 'nowrap' }}>
+        <div style={{ position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 999, background: 'white', borderRadius: 20, padding: '4px 14px', fontSize: 11, color: '#555', display: 'flex', gap: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.12)', whiteSpace: 'nowrap' }}>
           <span><span style={{ color: '#22c55e', fontWeight: 700 }}>{'\u25cf'}</span> Interested</span>
           <span><span style={{ color: '#eab308', fontWeight: 700 }}>{'\u25cf'}</span> New</span>
           <span><span style={{ color: '#ef4444', fontWeight: 700 }}>{'\u25cf'}</span> Not interested</span>
@@ -446,7 +446,7 @@ function MobileListings() {
   ];
 
   return (
-    <div style={{ padding: '12px 12px 80px', maxWidth: '100vw', overflow: 'hidden' }}>
+    <div style={{ padding: '12px 12px 120px', maxWidth: '100vw', overflow: 'hidden' }}>
       {/* Stats 2x2 */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
         {[['Properties', listings.length], ['New', newCount], ['Interested', yesCount], ['Viewings', viewings]].map(([label, val]) => (
