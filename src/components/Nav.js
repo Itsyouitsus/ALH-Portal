@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase';
 import { useAuth } from '../hooks/useAuth';
@@ -15,6 +15,12 @@ const ListIcon = () => (
     <rect x="3" y="4" width="18" height="4" rx="1"/>
     <rect x="3" y="10" width="18" height="4" rx="1"/>
     <rect x="3" y="16" width="18" height="4" rx="1"/>
+  </svg>
+);
+const MapIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/>
+    <circle cx="12" cy="10" r="3"/>
   </svg>
 );
 const DocIcon = () => (
@@ -43,6 +49,7 @@ const link = ({ isActive }) => 'nav-link' + (isActive ? ' active' : '');
 export default function Nav() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const isAdmin = profile?.role === 'admin';
 
   const initials = profile?.name
@@ -61,6 +68,10 @@ export default function Nav() {
     { to: '/documents', label: 'Documents', end: false },
     { to: '/renting-preview', label: 'Renting \u2726', end: false },
   ];
+
+  // Check if we are on the map view
+  const isMapActive = location.pathname === '/listings' && location.search === '?view=map';
+  const isListingsActive = location.pathname === '/listings' && location.search !== '?view=map';
 
   return (
     <>
@@ -89,10 +100,20 @@ export default function Nav() {
             <HomeIcon />
             Home
           </NavLink>
-          <NavLink to="/listings" className={({ isActive }) => 'mobile-nav-item' + (isActive ? ' active' : '')}>
+          <button
+            onClick={() => navigate('/listings')}
+            className={'mobile-nav-item' + (isListingsActive ? ' active' : '')}
+          >
             <ListIcon />
             Listings
-          </NavLink>
+          </button>
+          <button
+            onClick={() => navigate('/listings?view=map')}
+            className={'mobile-nav-item' + (isMapActive ? ' active' : '')}
+          >
+            <MapIcon />
+            Map
+          </button>
           <NavLink to="/documents" className={({ isActive }) => 'mobile-nav-item' + (isActive ? ' active' : '')}>
             <DocIcon />
             Docs
@@ -100,10 +121,6 @@ export default function Nav() {
           <NavLink to="/profile" className={({ isActive }) => 'mobile-nav-item' + (isActive ? ' active' : '')}>
             <UserIcon />
             Profile
-          </NavLink>
-          <NavLink to="/renting-preview" className={({ isActive }) => 'mobile-nav-item' + (isActive ? ' active' : '')}>
-            <EyeIcon />
-            Preview
           </NavLink>
         </nav>
       )}
