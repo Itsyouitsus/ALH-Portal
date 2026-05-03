@@ -23,6 +23,11 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+html, body, #root {
+  overflow-x: hidden;
+  width: 100%;
+}
+
 body {
   font-family: 'DM Sans', sans-serif;
   background: var(--gold-bg);
@@ -394,9 +399,9 @@ body {
   background: var(--gold);
 }
 
-/* ── Listings page desktop layout ─────────────────────────── */
+/* Listings page desktop layout */
 .listings-page {
-  height: calc(100vh - 56px); /* 56px = nav height */
+  height: calc(100vh - 56px);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -428,7 +433,7 @@ body {
   padding-right: 6px;
 }
 
-/* Map takes equal space */
+/* Map takes equal space on desktop */
 .listings-grid > div:last-child {
   flex: 1;
   min-height: 0;
@@ -439,7 +444,7 @@ body {
   .listings-page {
     height: auto;
     overflow: visible;
-    padding: 24px 20px;
+    padding: 16px 16px 80px;
   }
   .listings-grid {
     flex-direction: column;
@@ -447,5 +452,27 @@ body {
   .listings-scroll {
     overflow-y: visible;
     padding-right: 0;
+  }
+  /* Hide the always-visible map pane on mobile (map is shown via Map tab instead) */
+  .listings-map-desktop {
+    display: none !important;
+  }
+  /* Full-height map when Map tab is active on mobile */
+  .listings-map-mobile {
+    height: calc(100vh - 230px);
+    min-height: 400px;
+  }
+  /* Listings stats: horizontal scroll on mobile instead of wrapping */
+  .listings-stats {
+    display: flex !important;
+    gap: 8px !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+    grid-template-columns: unset !important;
+  }
+  .listings-stats > div {
+    min-width: 100px;
+    flex-shrink: 0;
   }
 }
