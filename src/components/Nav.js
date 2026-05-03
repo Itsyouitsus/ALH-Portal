@@ -1,20 +1,20 @@
 import React from 'react';
-import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase';
 import { useAuth } from '../hooks/useAuth';
 
+const HomeIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/>
+    <path d="M9 21V12h6v9"/>
+  </svg>
+);
 const ListIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
     <rect x="3" y="4" width="18" height="4" rx="1"/>
     <rect x="3" y="10" width="18" height="4" rx="1"/>
     <rect x="3" y="16" width="18" height="4" rx="1"/>
-  </svg>
-);
-const MapIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 1118 0z"/>
-    <circle cx="12" cy="10" r="3"/>
   </svg>
 );
 const DocIcon = () => (
@@ -43,7 +43,6 @@ const link = ({ isActive }) => 'nav-link' + (isActive ? ' active' : '');
 export default function Nav() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
   const isAdmin = profile?.role === 'admin';
 
   const initials = profile?.name
@@ -62,10 +61,6 @@ export default function Nav() {
     { to: '/documents', label: 'Documents', end: false },
     { to: '/renting-preview', label: 'Renting \u2726', end: false },
   ];
-
-  // Check if we're on the listings page with map view
-  const isListingsPage = location.pathname === '/listings' || location.pathname === '/';
-  const isMapView = location.search?.includes('view=map');
 
   return (
     <>
@@ -90,17 +85,14 @@ export default function Nav() {
 
       {!isAdmin && (
         <nav className="mobile-nav">
-          <NavLink to="/listings" end className={({ isActive }) => 'mobile-nav-item' + (isActive && !isMapView ? ' active' : '')}>
+          <NavLink to="/" end className={({ isActive }) => 'mobile-nav-item' + (isActive ? ' active' : '')}>
+            <HomeIcon />
+            Home
+          </NavLink>
+          <NavLink to="/listings" className={({ isActive }) => 'mobile-nav-item' + (isActive ? ' active' : '')}>
             <ListIcon />
             Listings
           </NavLink>
-          <button
-            className={'mobile-nav-item' + (isListingsPage && isMapView ? ' active' : '')}
-            onClick={() => navigate('/listings?view=map')}
-          >
-            <MapIcon />
-            Map
-          </button>
           <NavLink to="/documents" className={({ isActive }) => 'mobile-nav-item' + (isActive ? ' active' : '')}>
             <DocIcon />
             Docs
