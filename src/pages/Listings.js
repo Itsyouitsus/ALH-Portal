@@ -412,6 +412,7 @@ function MobileListings() {
   const [detailListing, setDetailListing] = useState(null);
   const [tab, setTab] = useState('new');
   const [hoveredId, setHoveredId] = useState(null);
+  const [mapFilter, setMapFilter] = useState('all');
   const { newCount, yesCount, noCount, viewings } = useCounts(listings);
 
   // Check if we should show the map (from bottom nav)
@@ -450,9 +451,33 @@ function MobileListings() {
 
   // If showing map (from bottom nav), render full-screen map
   if (showMap) {
+    const mapFiltered = mapFilter === 'yes'
+      ? listings.filter(l => l.clientResponse === 'yes' || getStatusKey(l))
+      : mapFilter === 'no'
+      ? listings.filter(l => l.clientResponse === 'no' && !getStatusKey(l))
+      : listings;
     return (
-      <div style={{ padding: '0 0 70px', maxWidth: '100vw', overflow: 'hidden' }}>
-        <MapPane listings={listings} hoveredId={hoveredId} onMarkerHover={setHoveredId} onMarkerClick={handleMarkerClick} style={{ height: 'calc(100vh - 126px)', borderRadius: 0, border: 'none' }} />
+      <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 56px)', maxWidth: '100vw', overflow: 'hidden' }}>
+        {/* Filter buttons */}
+        <div style={{ display: 'flex', gap: 6, padding: '10px 12px', background: 'var(--gold-bg)', flexShrink: 0 }}>
+          {[
+            { key: 'all', label: 'All' },
+            { key: 'yes', label: 'Interested' },
+            { key: 'no', label: 'Not interested' },
+          ].map(f => (
+            <button key={f.key} onClick={() => setMapFilter(f.key)} style={{
+              flex: 1, padding: '8px 4px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+              cursor: 'pointer', border: 'none', fontFamily: "'DM Sans',sans-serif",
+              background: mapFilter === f.key ? 'var(--near-black)' : 'var(--card-bg)',
+              color: mapFilter === f.key ? 'var(--gold-bg)' : 'var(--text-muted)',
+              transition: 'all 0.15s',
+            }}>{f.label}</button>
+          ))}
+        </div>
+        {/* Map fills remaining space above bottom nav */}
+        <div style={{ flex: 1, marginBottom: 70, minHeight: 0 }}>
+          <MapPane listings={mapFiltered} hoveredId={hoveredId} onMarkerHover={setHoveredId} onMarkerClick={handleMarkerClick} style={{ height: '100%', borderRadius: 0, border: 'none' }} />
+        </div>
         {detailListing && <ListingDetailModal listing={detailListing} onClose={() => setDetailListing(null)} isMobile={true} />}
       </div>
     );
