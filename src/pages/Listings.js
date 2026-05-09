@@ -457,7 +457,7 @@ function MobileListings() {
       ? listings.filter(l => l.clientResponse === 'no' && !getStatusKey(l))
       : listings;
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 56px - 60px)', maxWidth: '100vw', overflow: 'hidden' }}>
+      <div style={{ position: 'fixed', top: 56, left: 0, right: 0, bottom: 60, display: 'flex', flexDirection: 'column', zIndex: 50 }}>
         {/* Filter buttons */}
         <div style={{ display: 'flex', gap: 6, padding: '10px 12px', background: 'var(--gold-bg)', flexShrink: 0 }}>
           {[
@@ -474,7 +474,7 @@ function MobileListings() {
             }}>{f.label}</button>
           ))}
         </div>
-        {/* Map fills remaining space above bottom nav */}
+        {/* Map fills remaining space */}
         <div style={{ flex: 1, minHeight: 0 }}>
           <MapPane listings={mapFiltered} hoveredId={hoveredId} onMarkerHover={setHoveredId} onMarkerClick={handleMarkerClick} style={{ height: '100%', borderRadius: 0, border: 'none' }} />
         </div>
