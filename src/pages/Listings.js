@@ -412,7 +412,7 @@ function MobileListings() {
   const [detailListing, setDetailListing] = useState(null);
   const [tab, setTab] = useState('new');
   const [hoveredId, setHoveredId] = useState(null);
-  const [mapFilter, setMapFilter] = useState('all');
+  const [mapFilter, setMapFilter] = useState('new');
   const { newCount, yesCount, noCount, viewings } = useCounts(listings);
 
   // Check if we should show the map (from bottom nav)
@@ -451,7 +451,9 @@ function MobileListings() {
 
   // If showing map (from bottom nav), render full-screen map
   if (showMap) {
-    const mapFiltered = mapFilter === 'yes'
+    const mapFiltered = mapFilter === 'new'
+      ? listings.filter(l => !l.clientResponse && !getStatusKey(l))
+      : mapFilter === 'yes'
       ? listings.filter(l => l.clientResponse === 'yes' || getStatusKey(l))
       : mapFilter === 'no'
       ? listings.filter(l => l.clientResponse === 'no' && !getStatusKey(l))
@@ -461,9 +463,10 @@ function MobileListings() {
         {/* Filter buttons */}
         <div style={{ display: 'flex', gap: 6, padding: '10px 12px', background: 'var(--gold-bg)', flexShrink: 0 }}>
           {[
-            { key: 'all', label: 'All' },
+            { key: 'new', label: 'New' },
             { key: 'yes', label: 'Interested' },
             { key: 'no', label: 'Not interested' },
+            { key: 'all', label: 'All' },
           ].map(f => (
             <button key={f.key} onClick={() => setMapFilter(f.key)} style={{
               flex: 1, padding: '8px 4px', borderRadius: 8, fontSize: 12, fontWeight: 600,
